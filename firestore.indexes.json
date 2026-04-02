@@ -1,0 +1,54 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "responses",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "studentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "lessonId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "answeredAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "responses",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "lessonId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "conceptId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "answeredAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "concepts",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                {
+                    "fieldPath": "lessonId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "pMastery",
+                    "order": "ASCENDING"
+                }
+            ]
+        }
+    ]
+}
