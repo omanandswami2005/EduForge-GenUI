@@ -1,0 +1,13 @@
+.pdf
+.env
+node_modules/
+dist/
+
+#python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+#logs
+logs/
+*.log
