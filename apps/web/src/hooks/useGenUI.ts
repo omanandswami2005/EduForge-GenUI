@@ -61,7 +61,18 @@ export function useGenUI(studentId: string) {
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    accumulated += decoder.decode(value, { stream: true });
+                    const text = decoder.decode(value, { stream: true });
+
+                    // Parse SSE: strip "data: " prefix from each line
+                    const lines = text.split("\n");
+                    for (const line of lines) {
+                        if (line.startsWith("data: ")) {
+                            const payload = line.slice(6);
+                            if (payload === "[DONE]") continue;
+                            accumulated += payload;
+                        }
+                    }
+
                     try {
                         const parsed = JSON.parse(accumulated);
                         if (Array.isArray(parsed)) {

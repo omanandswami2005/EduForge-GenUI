@@ -26,16 +26,16 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
 
 // Lessons
 export const api = {
-    getUploadUrl: (token: string, title: string, subject: string) =>
+    getUploadUrl: (token: string, filename: string, contentType: string, lessonTitle: string, subject: string) =>
         apiFetch<{ uploadUrl: string; lessonId: string; gcsPath: string }>(
             "/lessons/upload-url",
-            { method: "POST", token, body: JSON.stringify({ title, subject }) }
+            { method: "POST", token, body: JSON.stringify({ filename, contentType, lessonTitle, subject }) }
         ),
 
-    startIngestion: (token: string, lessonId: string, gcsPath: string, title: string) =>
-        apiFetch<{ jobId: string; status: string }>(
+    startIngestion: (token: string, lessonId: string, gcsPath: string) =>
+        apiFetch<{ status: string; lessonId: string }>(
             "/lessons/start-ingestion",
-            { method: "POST", token, body: JSON.stringify({ lesson_id: lessonId, gcs_path: gcsPath, title }) }
+            { method: "POST", token, body: JSON.stringify({ lessonId, gcsPath }) }
         ),
 
     getLesson: (token: string, lessonId: string) =>
@@ -54,7 +54,7 @@ export const api = {
     enrollStudent: (token: string, lessonId: string) =>
         apiFetch<any>("/students/enroll", {
             method: "POST", token,
-            body: JSON.stringify({ lesson_id: lessonId }),
+            body: JSON.stringify({ lessonId }),
         }),
 
     getStudentLessons: (token: string, studentId: string) =>

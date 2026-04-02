@@ -31,6 +31,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         const token = await cred.user.getIdToken();
         const userDoc = await getDoc(doc(db, "users", cred.user.uid));
         const role = userDoc.exists() ? (userDoc.data().role as "teacher" | "student") : null;
+        if (role) document.cookie = `user-role=${role};path=/;max-age=86400;SameSite=Lax`;
         set({ user: cred.user, token, role });
     },
 
@@ -44,11 +45,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
             role,
             createdAt: new Date(),
         });
+        document.cookie = `user-role=${role};path=/;max-age=86400;SameSite=Lax`;
         set({ user: cred.user, token, role });
     },
 
     logout: async () => {
         await signOut(auth);
+        document.cookie = "user-role=;path=/;max-age=0";
         set({ user: null, token: null, role: null });
     },
 
@@ -58,8 +61,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
                 const token = await user.getIdToken();
                 const userDoc = await getDoc(doc(db, "users", user.uid));
                 const role = userDoc.exists() ? (userDoc.data().role as "teacher" | "student") : null;
+                if (role) document.cookie = `user-role=${role};path=/;max-age=86400;SameSite=Lax`;
                 set({ user, token, role, loading: false });
             } else {
+                document.cookie = "user-role=;path=/;max-age=0";
                 set({ user: null, token: null, role: null, loading: false });
             }
         });

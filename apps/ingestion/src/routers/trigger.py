@@ -43,7 +43,6 @@ async def trigger_ingestion(request: Request):
 
     lesson_id = payload["lesson_id"]
     gcs_path = payload["gcs_path"]
-    lesson_title = payload.get("title", "Untitled Lesson")
 
     logger.info("ingestion_started", lesson_id=lesson_id, gcs_path=gcs_path)
 
@@ -51,6 +50,9 @@ async def trigger_ingestion(request: Request):
     pubsub = PubSubService()
 
     try:
+        # Fetch lesson title from Firestore
+        lesson_doc = await fs.db.collection("lessons").document(lesson_id).get()
+        lesson_title = lesson_doc.to_dict().get("title", "Untitled Lesson") if lesson_doc.exists else "Untitled Lesson"
         # Step 1: Download PPTX
         await fs.update_ingestion_status(lesson_id, "extracting", 10, "Downloading presentation...")
         storage_svc = StorageService()

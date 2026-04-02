@@ -26,19 +26,25 @@ export default function NewLessonPage() {
         try {
             // 1. Get signed upload URL
             setStatus("Getting upload URL...");
-            const { uploadUrl, lessonId, gcsPath } = await api.getUploadUrl(token, title, subject);
+            const { uploadUrl, lessonId, gcsPath } = await api.getUploadUrl(
+                token,
+                file.name,
+                file.type || "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                title,
+                subject,
+            );
 
             // 2. Upload file to GCS
             setStatus("Uploading presentation...");
             await fetch(uploadUrl, {
                 method: "PUT",
-                headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+                headers: { "Content-Type": file.type || "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
                 body: file,
             });
 
             // 3. Trigger ingestion
             setStatus("Starting AI analysis...");
-            await api.startIngestion(token, lessonId, gcsPath, title);
+            await api.startIngestion(token, lessonId, gcsPath);
 
             // 4. Redirect to lesson page
             router.push(`/lessons/${lessonId}`);

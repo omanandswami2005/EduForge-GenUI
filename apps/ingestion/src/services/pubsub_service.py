@@ -15,7 +15,7 @@ class PubSubService:
 
     def publish_completion(self, lesson_id: str, status: str = "complete"):
         """Publish ingestion completion message to lesson-complete topic."""
-        topic_path = self.publisher.topic_path(PROJECT_ID, "lesson-complete")
+        topic_path = self.publisher.topic_path(PROJECT_ID, "lesson-ingestion-complete")
         message = json.dumps({"lesson_id": lesson_id, "status": status})
         future = self.publisher.publish(topic_path, message.encode("utf-8"))
         result = future.result()
