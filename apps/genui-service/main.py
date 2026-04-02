@@ -1,4 +1,4 @@
-"""GenUI Service — BKT-constrained AI visualization generation via Claude."""
+"""GenUI Service — BKT-constrained AI visualization generation via Gemini."""
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

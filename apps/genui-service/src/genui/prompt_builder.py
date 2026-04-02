@@ -1,5 +1,5 @@
 """
-Builds the system prompt that goes to Claude for GenUI generation.
+Builds the system prompt that goes to Gemini for GenUI generation.
 The BKT state determines which components the LLM is ALLOWED to emit.
 
 This is the neuro-symbolic constraint:

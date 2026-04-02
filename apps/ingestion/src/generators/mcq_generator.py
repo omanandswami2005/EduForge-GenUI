@@ -14,7 +14,7 @@ class MCQGenerator:
     """Generates 3-tiered MCQ banks per subtopic using Gemini."""
 
     def __init__(self):
-        self.model = genai.GenerativeModel("gemini-2.0-flash")
+        self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=10))
     async def generate(

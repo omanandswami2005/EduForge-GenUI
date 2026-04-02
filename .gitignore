@@ -37,6 +37,9 @@ Thumbs.db
 # Firebase
 .firebase/
 
+# Secrets and Service Account Keys
+.secrets/sa-key.json
+
 # Docker
 *.pid
 
@@ -46,4 +49,5 @@ htmlcov/
 .pytest_cache/
 
 # Misc
+*.pdf.secrets/
 *.pdf

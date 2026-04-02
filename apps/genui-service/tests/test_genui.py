@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, patch
 
 # Mock anthropic before importing
 with patch.dict("sys.modules", {
-    "anthropic": MagicMock(),
+    "google.generativeai": MagicMock(),
+    "google.generativeai.types": MagicMock(),
     "google.cloud.firestore": MagicMock(),
 }):
     from src.genui.prompt_builder import GenUIPromptBuilder

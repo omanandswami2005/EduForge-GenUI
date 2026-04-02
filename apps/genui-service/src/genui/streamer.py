@@ -1,12 +1,13 @@
-"""GenUI Streamer — Streams BKT-constrained visualizations from Claude API."""
+"""GenUI Streamer — Streams BKT-constrained visualizations from Gemini API."""
 import os
 import json
-import anthropic
+import google.generativeai as genai
 from .prompt_builder import GenUIPromptBuilder
 from .catalog import get_catalog_for_scaffold_level
 
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
-client = anthropic.Anthropic(api_key=os.environ.get("CLAUDE_API_KEY", ""))
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 
 class GenUIStreamer:
@@ -48,14 +49,14 @@ STUDENT STATE:
 Generate the most appropriate visualization using ONLY the allowed components.
 Tailor the depth, complexity, and language to the student's mastery level."""
 
-        with client.messages.stream(
-            model="claude-sonnet-4-6",
-            max_tokens=2000,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
+        response = model.generate_content(
+            [system_prompt + "\n\n" + user_message],
+            generation_config=genai.types.GenerationConfig(max_output_tokens=2000),
+            stream=True,
+        )
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
 
     def stream_tutor_response(
         self,
@@ -73,15 +74,21 @@ Tailor the depth, complexity, and language to the student's mastery level."""
             allowed_components=scaffold_decision["allowed_components"],
         )
 
-        messages = conversation_history + [
-            {"role": "user", "content": student_message}
-        ]
+        # Build conversation context for Gemini
+        context_parts = [tutor_system + "\n\nConversation so far:\n"]
+        for msg in conversation_history:
+            role = "Student" if msg["role"] == "user" else "Tutor"
+            context_parts.append(f"{role}: {msg['content']}")
+        context_parts.append(f"Student: {student_message}")
+        context_parts.append("Tutor:")
 
-        with client.messages.stream(
-            model="claude-sonnet-4-6",
-            max_tokens=800,
-            system=tutor_system,
-            messages=messages,
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
+        full_prompt = "\n".join(context_parts)
+
+        response = model.generate_content(
+            [full_prompt],
+            generation_config=genai.types.GenerationConfig(max_output_tokens=800),
+            stream=True,
+        )
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
