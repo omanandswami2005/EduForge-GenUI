@@ -1,4 +1,5 @@
 """Firebase Auth middleware for JWT verification."""
+import asyncio
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
@@ -30,7 +31,8 @@ async def verify_firebase_token(
         raise HTTPException(status_code=401, detail="Missing authorization header")
 
     try:
-        decoded = auth.verify_id_token(creds.credentials)
+        # Run the blocking SDK call in a thread pool so it doesn't stall the event loop
+        decoded = await asyncio.to_thread(auth.verify_id_token, creds.credentials)
         return decoded
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
@@ -43,6 +45,6 @@ async def optional_auth(
     if not creds:
         return None
     try:
-        return auth.verify_id_token(creds.credentials)
+        return await asyncio.to_thread(auth.verify_id_token, creds.credentials)
     except Exception:
         return None

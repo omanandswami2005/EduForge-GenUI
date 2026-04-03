@@ -15,18 +15,18 @@ interface Lesson {
 }
 
 export default function TeacherDashboard() {
-    const { token } = useSessionStore();
-    const [lessons, setLessons] = useState<Lesson[]>([]);
-    const [loadingLessons, setLoadingLessons] = useState(true);
+    const { token, loading } = useSessionStore();
+    const [lessons, setLessons] = useState<any[]>([]);
+    const [loading2, setLoading2] = useState(true);
 
     useEffect(() => {
-        if (token) {
+        if (!loading && token) {
             api.getTeacherLessons(token)
                 .then(setLessons)
                 .catch(console.error)
-                .finally(() => setLoadingLessons(false));
+                .finally(() => setLoading2(false));
         }
-    }, [token]);
+    }, [loading, token]);
 
     const statusColor = (status: string) => {
         switch (status) {
@@ -49,7 +49,7 @@ export default function TeacherDashboard() {
                 </Link>
             </div>
 
-            {loadingLessons ? (
+            {loading2 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading lessons...</div>
             ) : lessons.length === 0 ? (
                 <div className="text-center py-12">

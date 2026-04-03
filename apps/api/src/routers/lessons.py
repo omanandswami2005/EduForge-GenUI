@@ -1,11 +1,18 @@
 """Lessons router — CRUD for lessons, upload, ingestion triggers."""
 import uuid
+import json
+import base64
+import asyncio
+import os
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from ..services.firestore_service import FirestoreService
 from ..services.storage_service import StorageService
 from ..services.pubsub_service import PubSubService
 from ..middleware.auth import verify_firebase_token
+
+INGESTION_SERVICE_URL = os.environ.get("INGESTION_SERVICE_URL", "")
 
 router = APIRouter()
 
@@ -73,13 +80,34 @@ async def start_ingestion(
         "ingestion": {"step": "queued", "progress": 0, "message": "Queued for processing..."},
     })
 
-    # Publish to ingestion topic
-    ps.publish("lesson-ingestion-requests", {
-        "lesson_id": request.lessonId,
-        "gcs_path": request.gcsPath,
-    })
+    payload = {"lesson_id": request.lessonId, "gcs_path": request.gcsPath}
+
+    if INGESTION_SERVICE_URL:
+        # Local dev: call ingestion service directly (Pub/Sub can't reach localhost)
+        # Format message the same way Pub/Sub push would, fire-and-forget
+        pubsub_envelope = {
+            "message": {
+                "data": base64.b64encode(json.dumps(payload).encode()).decode(),
+                "messageId": "local-dev",
+            }
+        }
+        asyncio.create_task(_trigger_ingestion_direct(pubsub_envelope))
+    else:
+        # Production: publish to Pub/Sub (push subscription calls /trigger)
+        ps = PubSubService()
+        ps.publish("lesson-ingestion-requests", payload)
 
     return {"status": "queued", "lessonId": request.lessonId}
+
+
+async def _trigger_ingestion_direct(envelope: dict):
+    """Fire-and-forget HTTP call to ingestion service for local dev."""
+    try:
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            await client.post(f"{INGESTION_SERVICE_URL}/trigger", json=envelope)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Direct ingestion trigger failed: {e}")
 
 
 @router.get("/{lesson_id}")

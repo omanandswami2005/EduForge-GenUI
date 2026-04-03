@@ -37,4 +37,10 @@ async def get_student_lessons(
     if token["uid"] != student_id:
         raise HTTPException(status_code=403, detail="Can only view your own enrollments")
     fs = FirestoreService()
-    return await fs.get_student_enrollments(student_id)
+    enrollments = await fs.get_student_enrollments(student_id)
+    # Flatten to lesson objects (frontend expects flat list with id, title, subject)
+    return [
+        {**e["lesson"], "enrolledAt": e["enrollment"].get("enrolledAt")}
+        for e in enrollments
+        if e.get("lesson")
+    ]

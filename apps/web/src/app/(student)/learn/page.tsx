@@ -6,17 +6,17 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { api } from "@/lib/api";
 
 export default function StudentLearnPage() {
-    const { user, token } = useSessionStore();
+    const { user, token, loading } = useSessionStore();
     const [lessons, setLessons] = useState<any[]>([]);
     const [enrollCode, setEnrollCode] = useState("");
     const [enrolling, setEnrolling] = useState(false);
     const [enrollError, setEnrollError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (token && user) {
+        if (!loading && token && user) {
             api.getStudentLessons(token, user.uid).then(setLessons).catch(console.error);
         }
-    }, [token, user]);
+    }, [loading, token, user]);
 
     const handleEnroll = async () => {
         if (!enrollCode.trim() || !token) return;

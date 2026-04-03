@@ -1,108 +1,71 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { useBKTStore } from "@/stores/bktStore";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { experimental_useObject as useObject } from "@ai-sdk/react";
+import { useGenUIStore } from "@/stores/genUIStore";
+import { genUISchema } from "@/lib/genui-schema";
 
 interface GenUIComponent {
     component: string;
     props: Record<string, unknown>;
 }
 
-const ALLOWED_MAP: Record<number, string[]> = {
-    0: ["StepByStep", "HintCard", "FormulaCard", "AnalogyCard"],
-    1: ["StepByStep", "HintCard", "FormulaCard", "ConceptDiagram"],
-    2: ["ConceptDiagram", "FormulaCard", "HintCard", "PracticeExercise"],
-    3: ["ConceptDiagram", "PracticeExercise", "ProofWalkthrough"],
-    4: ["ConceptDiagram", "ExpertSummary", "ProofWalkthrough", "PracticeExercise"],
-};
-
-function validateComponents(raw: GenUIComponent[], level: number): GenUIComponent[] {
-    const allowed = new Set(ALLOWED_MAP[level] ?? ALLOWED_MAP[2]);
-    const filtered = raw.filter((item) => item.component && item.props && allowed.has(item.component));
-    if (filtered.length === 0) {
-        return level <= 1
-            ? [{ component: "HintCard", props: { hint_level: "gentle", hint_text: "Let me help you understand this concept." } }]
-            : [{ component: "ConceptDiagram", props: { title: "Loading...", diagram_type: "hierarchy", elements: [] } }];
-    }
-    return filtered;
-}
-
 export function useGenUI(studentId: string) {
-    const [components, setComponents] = useState<GenUIComponent[]>([]);
-    const [isStreaming, setIsStreaming] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const scaffoldLevel = useBKTStore((s) => s.scaffoldLevel);
-    const abortRef = useRef<AbortController | null>(null);
+    const [cachedComponents, setCachedComponents] = useState<GenUIComponent[]>([]);
+    const [servingFromCache, setServingFromCache] = useState(false);
+    const { setCache, getCache } = useGenUIStore();
 
-    const generate = useCallback(
-        async (conceptId: string, subtopicId: string, lessonId: string) => {
-            abortRef.current?.abort();
-            abortRef.current = new AbortController();
+    const lastRequestRef = useRef<{ subtopicId: string; conceptId: string } | null>(null);
+    const studentIdRef = useRef(studentId);
+    useEffect(() => { studentIdRef.current = studentId; }, [studentId]);
 
-            setIsStreaming(true);
-            setError(null);
-            setComponents([]);
-
-            try {
-                const res = await fetch("/api/genui", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ conceptId, subtopicId, lessonId, studentId, type: "visualize" }),
-                    signal: abortRef.current.signal,
-                });
-
-                if (!res.ok) throw new Error(`GenUI stream failed: ${res.status}`);
-                if (!res.body) throw new Error("No stream body");
-
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let accumulated = "";
-                let buffer = "";
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    buffer += decoder.decode(value, { stream: true });
-
-                    const lines = buffer.split("\n");
-                    buffer = lines.pop() || "";
-
-                    for (const line of lines) {
-                        if (line.startsWith("data: ")) {
-                            const payload = line.slice(6);
-                            if (payload === "[DONE]") continue;
-                            accumulated += payload;
-                        }
-                    }
-
-                    try {
-                        const parsed = JSON.parse(accumulated);
-                        if (Array.isArray(parsed)) {
-                            setComponents(validateComponents(parsed, scaffoldLevel));
-                        }
-                    } catch {
-                        // JSON not complete yet
-                    }
-                }
-
-                try {
-                    const final = JSON.parse(accumulated);
-                    if (Array.isArray(final)) {
-                        setComponents(validateComponents(final, scaffoldLevel));
-                    }
-                } catch {
-                    setError("Failed to parse GenUI response");
-                }
-            } catch (e: unknown) {
-                if (e instanceof Error && e.name !== "AbortError") {
-                    setError(e.message);
-                }
-            } finally {
-                setIsStreaming(false);
+    const { object, submit, isLoading, error } = useObject({
+        api: "/api/genui",
+        schema: genUISchema,
+        onFinish({ object: result }) {
+            if (result?.components && lastRequestRef.current) {
+                const { subtopicId, conceptId } = lastRequestRef.current;
+                setCache(subtopicId, conceptId, result.components as GenUIComponent[]);
             }
         },
-        [studentId, scaffoldLevel]
+    });
+
+    const generate = useCallback(
+        (conceptId: string, subtopicId: string, lessonId: string, forceRefresh = false) => {
+            // Serve from cache if available and not a forced refresh
+            if (!forceRefresh) {
+                const cached = getCache(subtopicId, conceptId);
+                if (cached) {
+                    setCachedComponents(cached);
+                    setServingFromCache(true);
+                    return;
+                }
+            }
+
+            setServingFromCache(false);
+            setCachedComponents([]);
+            lastRequestRef.current = { subtopicId, conceptId };
+
+            submit({
+                conceptId,
+                subtopicId,
+                lessonId,
+                studentId: studentIdRef.current,
+            });
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [getCache, setCache, submit]
     );
 
-    return { components, isStreaming, error, generate };
+    // Derive components: from cache or from streaming object
+    const components: GenUIComponent[] = servingFromCache
+        ? cachedComponents
+        : (object?.components as GenUIComponent[] | undefined) ?? [];
+
+    return {
+        components,
+        isStreaming: isLoading,
+        error: error?.message ?? null,
+        generate,
+    };
 }

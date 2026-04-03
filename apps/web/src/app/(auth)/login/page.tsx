@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -11,8 +10,6 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const login = useSessionStore((s) => s.login);
-    const role = useSessionStore((s) => s.role);
-    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,8 +17,14 @@ export default function LoginPage() {
         setLoading(true);
         try {
             await login(email, password);
-            const store = useSessionStore.getState();
-            router.push(store.role === "teacher" ? "/dashboard" : "/learn");
+            const { role } = useSessionStore.getState();
+            if (!role) {
+                setError("Account setup incomplete. Please register again.");
+                return;
+            }
+            // Use full navigation to bypass Next.js router cache — ensures
+            // the server always receives the fresh auth cookie
+            window.location.href = role === "teacher" ? "/dashboard" : "/learn";
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Login failed");
         } finally {

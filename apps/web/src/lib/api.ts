@@ -42,7 +42,7 @@ export const api = {
         apiFetch<any>(`/lessons/${lessonId}`, { token }),
 
     getTeacherLessons: (token: string) =>
-        apiFetch<any[]>("/lessons/", { token }),
+        apiFetch<any[]>("/lessons", { token }),
 
     publishLesson: (token: string, lessonId: string) =>
         apiFetch<{ status: string; lessonId: string }>(

@@ -1,71 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
+import { streamText, Output } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { genUISchema, ALLOWED_MAP, buildGenUIPrompt } from "@/lib/genui-schema";
 
 const BKT_URL = process.env.BKT_SERVICE_URL || "http://localhost:8001";
-const GENUI_URL = process.env.GENUI_SERVICE_URL || "http://localhost:8002";
+
+const google = createGoogleGenerativeAI({
+    apiKey: process.env.GEMINI_API_KEY,
+});
+
+const DEFAULT_BKT_STATE = (studentId: string, conceptId: string) => ({
+    student_id: studentId,
+    concept_id: conceptId,
+    p_mastery: 0.2,
+    attempts: 0,
+    mastered: false,
+    consecutive_wrong: 0,
+});
+
+const DEFAULT_SCAFFOLD = {
+    level: 0,
+    level_name: "foundational",
+    allowed_components: ["StepByStep", "HintCard", "FormulaCard", "AnalogyCard"],
+    p_mastery: 0.2,
+    description: "Foundational support — step-by-step guidance with hints",
+};
+
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
     try {
-        const { conceptId, subtopicId, lessonId, studentId, type, conceptContent } = await req.json();
+        const { conceptId, subtopicId, lessonId, studentId } = await req.json();
 
         if (!conceptId || !studentId) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        // 1. Get BKT state
-        let bktState: any;
+        // 1. Get BKT state — fall back to default if service unavailable
+        let bktState = DEFAULT_BKT_STATE(studentId, conceptId);
         try {
             const bktRes = await fetch(
-                `${BKT_URL}/state?studentId=${studentId}&conceptId=${conceptId}`
+                `${BKT_URL}/state?studentId=${encodeURIComponent(studentId)}&conceptId=${encodeURIComponent(conceptId)}`,
+                { signal: AbortSignal.timeout(3000) }
             );
-            if (!bktRes.ok) {
-                return NextResponse.json({ error: "BKT service unavailable" }, { status: 502 });
-            }
-            bktState = await bktRes.json();
+            if (bktRes.ok) bktState = await bktRes.json();
         } catch {
-            return NextResponse.json({ error: "BKT service error" }, { status: 502 });
+            // BKT unavailable — use default state (0.2 mastery = foundational scaffold)
         }
 
-        // 2. Get scaffold decision
-        let scaffold: any;
+        // 2. Get scaffold decision — fall back to default if service unavailable
+        let scaffold = { ...DEFAULT_SCAFFOLD, p_mastery: bktState.p_mastery };
         try {
             const scaffoldRes = await fetch(
-                `${BKT_URL}/scaffold?p_mastery=${bktState.p_mastery || 0.2}`
+                `${BKT_URL}/scaffold?p_mastery=${bktState.p_mastery || 0.2}`,
+                { signal: AbortSignal.timeout(3000) }
             );
-            if (!scaffoldRes.ok) {
-                return NextResponse.json({ error: "Scaffold service unavailable" }, { status: 502 });
-            }
-            scaffold = await scaffoldRes.json();
+            if (scaffoldRes.ok) scaffold = await scaffoldRes.json();
         } catch {
-            return NextResponse.json({ error: "Scaffold service error" }, { status: 502 });
+            // Use default scaffold
         }
 
-        // 3. Stream from GenUI service
-        const genUIRes = await fetch(
-            `${GENUI_URL}/stream/${type || "visualize"}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    concept: conceptId,
-                    concept_content: conceptContent || `Concept: ${conceptId} from subtopic ${subtopicId}`,
-                    bkt_state: bktState,
-                    scaffold_decision: scaffold,
-                    student_name: "Student",
-                }),
-            }
-        );
-
-        if (!genUIRes.ok || !genUIRes.body) {
-            return NextResponse.json({ error: "GenUI service unavailable" }, { status: 502 });
-        }
-
-        return new Response(genUIRes.body, {
-            headers: {
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                Connection: "keep-alive",
-            },
+        // 3. Build prompt and stream structured output via Vercel AI SDK
+        const allowed = scaffold.allowed_components ?? ALLOWED_MAP[scaffold.level] ?? ALLOWED_MAP[0];
+        const prompt = buildGenUIPrompt({
+            scaffoldLevel: scaffold.level,
+            pMastery: scaffold.p_mastery ?? 0.2,
+            allowed,
+            conceptName: `${conceptId} (subtopic ${subtopicId}, lesson ${lessonId})`,
         });
+
+        // Use restricted schema so Gemini can only produce allowed component types
+        const result = streamText({
+            model: google("gemini-2.5-flash"),
+            output: Output.object({ schema: genUISchema }),
+            prompt,
+        });
+
+        return result.toTextStreamResponse();
     } catch (error) {
         return NextResponse.json(
             { error: error instanceof Error ? error.message : "Internal error" },

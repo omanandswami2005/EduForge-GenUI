@@ -14,7 +14,7 @@ echo "Building and pushing images with tag: $TAG"
 gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
 
 # Build and push each service
-services=("api" "bkt-service" "ingestion" "genui-service")
+services=("api" "bkt-service" "ingestion")
 
 for service in "${services[@]}"; do
   echo "--- Building ${service} ---"

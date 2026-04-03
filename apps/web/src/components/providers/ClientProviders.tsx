@@ -17,9 +17,13 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         const interval = setInterval(async () => {
             const user = auth.currentUser;
             if (user) {
-                const token = await user.getIdToken(true);
-                useSessionStore.setState({ token });
-                document.cookie = `firebase-token=${token};path=/;max-age=3600;SameSite=Strict`;
+                try {
+                    const token = await user.getIdToken(true);
+                    useSessionStore.setState({ token });
+                    document.cookie = `firebase-token=${token};path=/;max-age=3600;SameSite=Strict`;
+                } catch {
+                    // Transient network error — next interval will retry automatically
+                }
             }
         }, 50 * 60 * 1000);
         return () => clearInterval(interval);

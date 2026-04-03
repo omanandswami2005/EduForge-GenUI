@@ -24,12 +24,6 @@ pip install -r requirements.txt -q
 python -m pytest tests/ -v --tb=short
 cd ../..
 
-echo "--- GenUI Service Tests ---"
-cd apps/genui-service
-pip install -r requirements.txt -q
-python -m pytest tests/ -v --tb=short
-cd ../..
-
 # Frontend
 echo "--- Frontend Lint ---"
 cd apps/web

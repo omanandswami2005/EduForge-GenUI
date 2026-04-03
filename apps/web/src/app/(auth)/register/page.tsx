@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -13,7 +12,6 @@ export default function RegisterPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const register = useSessionStore((s) => s.register);
-    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,7 +19,7 @@ export default function RegisterPage() {
         setLoading(true);
         try {
             await register(email, password, name, role);
-            router.push(role === "teacher" ? "/dashboard" : "/learn");
+            window.location.href = role === "teacher" ? "/dashboard" : "/learn";
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Registration failed");
         } finally {

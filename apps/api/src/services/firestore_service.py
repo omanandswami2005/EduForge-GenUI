@@ -4,10 +4,20 @@ from google.cloud import firestore
 
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "eduforge-genui-2026")
 
+# Singleton client — created once at import time, reused across all requests
+_client: firestore.AsyncClient | None = None
+
+
+def get_db() -> firestore.AsyncClient:
+    global _client
+    if _client is None:
+        _client = firestore.AsyncClient(project=PROJECT_ID)
+    return _client
+
 
 class FirestoreService:
     def __init__(self):
-        self.db = firestore.AsyncClient(project=PROJECT_ID)
+        self.db = get_db()
 
     async def create_lesson(self, data: dict) -> str:
         """Create a new lesson document. Returns lesson ID."""

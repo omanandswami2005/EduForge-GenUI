@@ -8,15 +8,12 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_BKT_URL=http://localhost:8001
-      - NEXT_PUBLIC_GENUI_URL=http://localhost:8002
       - BKT_SERVICE_URL=http://bkt-service:8080
-      - GENUI_SERVICE_URL=http://genui-service:8080
       - API_SERVICE_URL=http://api:8080
     env_file: .env.local
     depends_on:
       - api
       - bkt-service
-      - genui-service
 
   api:
     build: ./apps/api
@@ -33,12 +30,6 @@ services:
       - "8001:8080"
     environment:
       - GOOGLE_CLOUD_PROJECT=${PROJECT_ID:-eduforge-genui-2026}
-    env_file: .env.local
-
-  genui-service:
-    build: ./apps/genui-service
-    ports:
-      - "8002:8080"
     env_file: .env.local
 
   ingestion:

@@ -13,31 +13,35 @@ import { GenUIRenderer } from "@/components/genui/GenUIRenderer";
 
 export default function SubtopicLearnPage() {
     const { lessonId, subtopicId } = useParams<{ lessonId: string; subtopicId: string }>();
-    const { user, token } = useSessionStore();
+    const { user, token, loading } = useSessionStore();
     const [mcqs, setMcqs] = useState<any[]>([]);
     const [currentMCQIdx, setCurrentMCQIdx] = useState(0);
     const [bktResult, setBktResult] = useState<any>(null);
     const [subtopic, setSubtopic] = useState<any>(null);
 
     const studentId = user?.uid || "";
-    const { components, isStreaming, generate } = useGenUI(studentId);
+    const { components, isStreaming, error: genUIError, generate } = useGenUI(studentId);
 
     useEffect(() => {
-        if (token && lessonId && subtopicId) {
+        if (!loading && token && lessonId && subtopicId) {
             api.getMCQs(token, lessonId, subtopicId).then(setMcqs).catch(console.error);
             api.getSubtopics(token, lessonId).then((subs) => {
                 const st = subs.find((s: any) => s.id === subtopicId);
                 if (st) setSubtopic(st);
             }).catch(console.error);
         }
-    }, [token, lessonId, subtopicId]);
+    }, [loading, token, lessonId, subtopicId]);
 
-    // Generate initial visualization
+    // Generate initial visualization — only fires when subtopic loads.
+    // generate() is stable (never changes identity) so it is intentionally
+    // omitted from deps to avoid re-firing on every render.
     useEffect(() => {
-        if (subtopic?.keyConcepts?.[0] && subtopicId) {
-            generate(subtopic.keyConcepts[0], subtopicId, lessonId);
-        }
-    }, [subtopic, subtopicId, lessonId, generate]);
+        if (!subtopic || !subtopicId) return;
+        // Use first keyConcept, fall back to subtopic title as conceptId
+        const conceptId = subtopic?.keyConcepts?.[0] ?? subtopic.title;
+        generate(conceptId, subtopicId, lessonId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [subtopic, subtopicId, lessonId]);
 
     const handleAnswer = useCallback(
         async (answer: string, isCorrect: boolean, timeTaken: number) => {
@@ -56,19 +60,21 @@ export default function SubtopicLearnPage() {
                 });
                 setBktResult(result);
 
-                // If scaffold level changed, regenerate GenUI
+                // If scaffold level changed, force-refresh GenUI with new scaffold
                 if (result.scaffold_level !== useBKTStore.getState().scaffoldLevel) {
                     useBKTStore.getState().setScaffoldDecision(
                         result.scaffold_level,
                         result.allowed_components
                     );
-                    generate(mcq.concept, subtopicId, lessonId);
+                    generate(mcq.concept, subtopicId, lessonId, true); // forceRefresh=true
                 }
             } catch (err) {
                 console.error("BKT update failed:", err);
             }
         },
-        [token, studentId, mcqs, currentMCQIdx, subtopicId, lessonId, generate]
+        // generate is stable so safe to include; remove from eslint check
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [token, studentId, mcqs, currentMCQIdx, subtopicId, lessonId]
     );
 
     const nextQuestion = () => {
@@ -94,6 +100,11 @@ export default function SubtopicLearnPage() {
                                 </span>
                             )}
                         </h3>
+                        {genUIError && (
+                            <p className="text-sm text-red-500 dark:text-red-400 mb-3">
+                                Visualization unavailable: {genUIError}
+                            </p>
+                        )}
                         <GenUIRenderer components={components} />
                     </div>
 
@@ -106,6 +117,7 @@ export default function SubtopicLearnPage() {
                                 </h3>
                             </div>
                             <AdaptiveMCQ
+                                key={currentMCQ.id}
                                 question={currentMCQ}
                                 onAnswer={handleAnswer}
                                 bktUpdateResult={bktResult}

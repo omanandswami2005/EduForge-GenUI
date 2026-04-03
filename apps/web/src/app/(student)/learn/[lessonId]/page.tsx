@@ -9,17 +9,17 @@ import { api } from "@/lib/api";
 
 export default function LessonLearnPage() {
     const { lessonId } = useParams<{ lessonId: string }>();
-    const { user, token } = useSessionStore();
+    const { user, token, loading } = useSessionStore();
     const [subtopics, setSubtopics] = useState<any[]>([]);
     const [lesson, setLesson] = useState<any>(null);
     const bktStates = useBKTState(user?.uid || "", lessonId);
 
     useEffect(() => {
-        if (token && lessonId) {
+        if (!loading && token && lessonId) {
             api.getLesson(token, lessonId).then(setLesson).catch(console.error);
             api.getSubtopics(token, lessonId).then(setSubtopics).catch(console.error);
         }
-    }, [token, lessonId]);
+    }, [loading, token, lessonId]);
 
     const getSubtopicMastery = (subtopic: any) => {
         const concepts = subtopic.keyConcepts || [];

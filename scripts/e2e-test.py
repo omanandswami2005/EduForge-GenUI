@@ -1,22 +1,20 @@
 """
-EduForge E2E Test — Real services, real GCP, real Gemini.
+EduForge E2E Test — Real services, real GCP.
 
 Tests the full user flow:
   1. BKT service (direct, no auth)
   2. Firebase Auth sign-up / sign-in (real)
   3. API Gateway (with real Firebase token)
-  4. GenUI streaming (real Gemini)
+  4. Ingestion service
 """
 import os
 import sys
-import json
 import time
 import requests
 
 # ─── Config ───
 BKT_URL = os.environ.get("BKT_SERVICE_URL", "http://localhost:8001")
 API_URL = os.environ.get("API_GATEWAY_URL", "http://localhost:8000")
-GENUI_URL = os.environ.get("GENUI_SERVICE_URL", "http://localhost:8002")
 INGESTION_URL = os.environ.get("INGESTION_SERVICE_URL", "http://localhost:8003")
 FIREBASE_API_KEY = os.environ.get("NEXT_PUBLIC_FIREBASE_API_KEY", "")
 
@@ -181,116 +179,10 @@ def test_api_gateway(token):
 
 
 # ═══════════════════════════════════════════════════════════
-#  PHASE 4: GenUI Streaming (real Gemini)
-# ═══════════════════════════════════════════════════════════
-def test_genui_streaming():
-    section("Phase 4: GenUI Streaming (real Gemini)")
-
-    # Health
-    r = requests.get(f"{GENUI_URL}/health")
-    log("GenUI health", r.status_code == 200)
-
-    # Stream visualization
-    payload = {
-        "concept": "Newton's First Law of Motion",
-        "concept_content": "An object at rest stays at rest, and an object in motion stays in motion, unless acted upon by an external force. This is also known as the law of inertia.",
-        "bkt_state": {
-            "p_mastery": 0.15,
-            "attempts": 1,
-            "last_correct": False,
-        },
-        "scaffold_decision": {
-            "level": 0,
-            "level_name": "novice",
-            "allowed_components": ["StepByStep", "HintCard", "FormulaCard", "AnalogyCard"],
-        },
-        "student_name": "Test Student",
-    }
-
-    print("  → Streaming GenUI visualization (Gemini)...")
-    try:
-        r = requests.post(f"{GENUI_URL}/stream/visualize", json=payload, stream=True, timeout=30)
-        chunks = []
-        for line in r.iter_lines():
-            if line:
-                decoded = line.decode("utf-8")
-                if decoded.startswith("data: ") and decoded != "data: [DONE]":
-                    chunks.append(decoded[6:])
-
-        full_response = "".join(chunks)
-        log("GenUI stream received",
-            len(full_response) > 50,
-            f"{len(full_response)} chars, {len(chunks)} chunks")
-
-        # Check if response contains component-like content
-        has_content = len(full_response) > 50
-        has_component_refs = any(c in full_response for c in
-            ["StepByStep", "HintCard", "FormulaCard", "AnalogyCard",
-             "ConceptDiagram", "PracticeExercise", "step", "hint", "concept",
-             "motion", "force", "inertia", "object", "Newton"])
-        log("GenUI output has educational content",
-            has_content and has_component_refs,
-            f"length={len(full_response)}, sample: {full_response[:80]}...")
-
-        # Try JSON parsing (may or may not be valid JSON depending on Gemini output)
-        try:
-            cleaned = full_response.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("\n", 1)[1]
-            if cleaned.endswith("```"):
-                cleaned = cleaned.rsplit("```", 1)[0]
-            parsed = json.loads(cleaned.strip())
-            if isinstance(parsed, list) and len(parsed) > 0:
-                components = [c.get("component") for c in parsed]
-                log("GenUI output valid JSON components (bonus)",
-                    True,
-                    f"components: {components}")
-        except json.JSONDecodeError:
-            log("GenUI output valid JSON components (bonus)", True,
-                "Gemini returned prose instead of JSON — acceptable for streaming")
-
-    except Exception as e:
-        log("GenUI stream received", False, str(e))
-
-    # Test chat endpoint
-    chat_payload = {
-        "student_message": "I don't understand what inertia means. Can you explain it simply?",
-        "concept": "Newton's First Law",
-        "bkt_state": {"p_mastery": 0.15, "attempts": 1},
-        "scaffold_decision": {
-            "level": 0,
-            "level_name": "novice",
-            "allowed_components": ["StepByStep", "HintCard"],
-        },
-        "conversation_history": [],
-    }
-
-    print("  → Streaming GenUI chat (Gemini tutor)...")
-    try:
-        r = requests.post(f"{GENUI_URL}/stream/chat", json=chat_payload, stream=True, timeout=30)
-        chunks = []
-        for line in r.iter_lines():
-            if line:
-                decoded = line.decode("utf-8")
-                if decoded.startswith("data: ") and decoded != "data: [DONE]":
-                    chunks.append(decoded[6:])
-
-        full_response = "".join(chunks)
-        log("GenUI chat stream received",
-            len(full_response) > 20,
-            f"{len(full_response)} chars")
-        if full_response:
-            print(f"    Tutor says: \"{full_response[:200]}...\"")
-
-    except Exception as e:
-        log("GenUI chat stream received", False, str(e))
-
-
-# ═══════════════════════════════════════════════════════════
-#  PHASE 5: Ingestion Service
+#  PHASE 4: Ingestion Service
 # ═══════════════════════════════════════════════════════════
 def test_ingestion_service():
-    section("Phase 5: Ingestion Service")
+    section("Phase 4: Ingestion Service")
 
     r = requests.get(f"{INGESTION_URL}/health")
     log("Ingestion health", r.status_code == 200)
@@ -310,7 +202,6 @@ if __name__ == "__main__":
         test_api_gateway(token)
     else:
         section("Phase 3: API Gateway — SKIPPED (no token)")
-    test_genui_streaming()
     test_ingestion_service()
 
     # Summary
