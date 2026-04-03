@@ -8,6 +8,13 @@
     --background-end-rgb: 255, 255, 255;
 }
 
+html.dark {
+    --foreground-rgb: 229, 231, 235;
+    --background-start-rgb: 3, 7, 18;
+    --background-end-rgb: 3, 7, 18;
+    color-scheme: dark;
+}
+
 body {
     color: rgb(var(--foreground-rgb));
     background: rgb(var(--background-end-rgb));

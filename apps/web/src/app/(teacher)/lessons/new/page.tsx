@@ -57,49 +57,49 @@ export default function NewLessonPage() {
 
     return (
         <main className="max-w-2xl mx-auto px-6 py-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Upload a Lesson</h2>
-            <p className="text-gray-500 mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upload a Lesson</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">
                 Upload a PowerPoint presentation. Our AI will automatically extract topics,
                 generate assessments, and calibrate the knowledge model.
             </p>
 
             {error && (
-                <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                <div className="mb-6 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
                     {error}
                 </div>
             )}
 
             <form onSubmit={handleUpload} className="space-y-6">
                 <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Lesson Title</label>
+                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lesson Title</label>
                     <input
                         id="title"
                         type="text"
                         required
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="e.g., Newton's Laws of Motion"
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject</label>
                     <input
                         id="subject"
                         type="text"
                         required
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="e.g., Physics"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Presentation File</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Presentation File</label>
                     <div
-                        className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition-colors"
+                        className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                         onClick={() => fileRef.current?.click()}
                     >
                         <input
@@ -111,22 +111,22 @@ export default function NewLessonPage() {
                         />
                         {file ? (
                             <div>
-                                <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                     {(file.size / 1024 / 1024).toFixed(1)} MB
                                 </p>
                             </div>
                         ) : (
                             <div>
-                                <p className="text-sm text-gray-500">Click to select a .pptx file</p>
-                                <p className="text-xs text-gray-400 mt-1">Max 50MB</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Click to select a .pptx file</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Max 50MB</p>
                             </div>
                         )}
                     </div>
                 </div>
 
                 {status && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300">
                         {status}
                     </div>
                 )}

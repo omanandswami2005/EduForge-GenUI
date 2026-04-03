@@ -31,7 +31,7 @@ export default function LessonDetailPage() {
         }
     }, [lesson?.status, lesson?.ingestion?.step, token, id]);
 
-    if (!lesson) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    if (!lesson) return <div className="flex items-center justify-center min-h-dvh text-gray-500 dark:text-gray-400">Loading...</div>;
 
     const handlePublish = async () => {
         if (!token) return;
@@ -53,19 +53,19 @@ export default function LessonDetailPage() {
 
     return (
         <main className="max-w-4xl mx-auto px-6 py-8">
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">{lesson.title}</h2>
-                        <p className="text-gray-500">{lesson.subject}</p>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{lesson.title}</h2>
+                        <p className="text-gray-500 dark:text-gray-400">{lesson.subject}</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${lesson.status === "published"
-                                ? "bg-green-100 text-green-800"
+                                ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300"
                                 : lesson.status === "processing"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-gray-100 text-gray-800"
+                                    ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300"
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"
                                 }`}
                         >
                             {lesson.status}
@@ -85,11 +85,11 @@ export default function LessonDetailPage() {
                 {/* Ingestion progress */}
                 {lesson.ingestion && lesson.status === "processing" && (
                     <div className="mt-4">
-                        <div className="flex items-center justify-between text-sm text-gray-500 mb-1">
+                        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-1">
                             <span>{lesson.ingestion.message}</span>
                             <span>{lesson.ingestion.progress}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                             <div
                                 className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
                                 style={{ width: `${lesson.ingestion.progress}%` }}
@@ -99,7 +99,7 @@ export default function LessonDetailPage() {
                 )}
 
                 {lesson.ingestion?.step === "complete" && (
-                    <div className="mt-4 flex gap-4 text-sm text-gray-600">
+                    <div className="mt-4 flex gap-4 text-sm text-gray-600 dark:text-gray-400">
                         <span>{lesson.ingestion.subtopicsFound} subtopics</span>
                         <span>{lesson.ingestion.mcqsGenerated} MCQs</span>
                     </div>
@@ -107,10 +107,10 @@ export default function LessonDetailPage() {
 
                 {/* Share lesson ID for student enrollment */}
                 {lesson.status === "published" && (
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
+                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-blue-800">Share with students</p>
-                            <p className="text-xs text-blue-600 font-mono">{id}</p>
+                            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Share with students</p>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 font-mono">{id}</p>
                         </div>
                         <button
                             onClick={handleCopyId}
@@ -125,26 +125,26 @@ export default function LessonDetailPage() {
             {/* Subtopics list */}
             {subtopics.length > 0 && (
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Topics</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Topics</h3>
                     <div className="space-y-3">
                         {subtopics.map((st: any, idx: number) => (
                             <div
                                 key={st.id || idx}
-                                className="bg-white rounded-lg border border-gray-200 p-4"
+                                className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4"
                             >
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="font-medium text-gray-900">
+                                        <h4 className="font-medium text-gray-900 dark:text-white">
                                             {idx + 1}. {st.title}
                                         </h4>
-                                        <p className="text-sm text-gray-500 mt-1">{st.description}</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{st.description}</p>
                                     </div>
                                     <span
                                         className={`px-2 py-0.5 rounded text-xs font-medium ${st.difficulty === "foundational"
-                                            ? "bg-green-100 text-green-700"
+                                            ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
                                             : st.difficulty === "intermediate"
-                                                ? "bg-yellow-100 text-yellow-700"
-                                                : "bg-red-100 text-red-700"
+                                                ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300"
+                                                : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"
                                             }`}
                                     >
                                         {st.difficulty}
@@ -155,7 +155,7 @@ export default function LessonDetailPage() {
                                         {st.keyConcepts.map((c: string) => (
                                             <span
                                                 key={c}
-                                                className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs"
+                                                className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded text-xs"
                                             >
                                                 {c}
                                             </span>

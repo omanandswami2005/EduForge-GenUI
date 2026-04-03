@@ -38,7 +38,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     register: async (email, password, name, role) => {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
-        const token = await cred.user.getIdToken();
+        // Force-refresh the token so Firestore SDK has auth ready before the write
+        const token = await cred.user.getIdToken(true);
         await setDoc(doc(db, "users", cred.user.uid), {
             uid: cred.user.uid,
             email,

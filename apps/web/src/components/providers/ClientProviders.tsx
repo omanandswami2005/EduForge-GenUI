@@ -2,10 +2,12 @@
 
 import { useEffect } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useThemeStore } from "@/stores/themeStore";
 import { auth } from "@/lib/firebase";
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
     useEffect(() => {
+        useThemeStore.getState().init();
         const unsub = useSessionStore.getState().initAuth();
         return unsub;
     }, []);
