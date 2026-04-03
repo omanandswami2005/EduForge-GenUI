@@ -37,9 +37,15 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
         setIsSubmitting(true);
         const isCorrect = option === question.correct_answer;
         const timeTaken = Math.round((Date.now() - startTime) / 1000);
-        await onAnswer(option, isCorrect, timeTaken);
-        setRevealed(true);
-        setIsSubmitting(false);
+        try {
+            await onAnswer(option, isCorrect, timeTaken);
+            setRevealed(true);
+        } catch (err) {
+            console.error("Failed to record answer:", err);
+            setRevealed(true);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const optionColor = (option: string) => {

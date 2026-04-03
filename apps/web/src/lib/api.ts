@@ -44,6 +44,12 @@ export const api = {
     getTeacherLessons: (token: string) =>
         apiFetch<any[]>("/lessons/", { token }),
 
+    publishLesson: (token: string, lessonId: string) =>
+        apiFetch<{ status: string; lessonId: string }>(
+            `/lessons/${lessonId}/publish`,
+            { method: "PATCH", token }
+        ),
+
     getSubtopics: (token: string, lessonId: string) =>
         apiFetch<any[]>(`/lessons/${lessonId}/subtopics`, { token }),
 

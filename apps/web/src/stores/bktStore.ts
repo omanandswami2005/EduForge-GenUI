@@ -50,7 +50,7 @@ export const useBKTStore = create<BKTStore>()(
                             pMastery: data.pMastery,
                             mastered: data.mastered,
                             attempts: data.attempts,
-                            scaffoldLevel: Math.min(4, Math.floor(data.pMastery / 0.2)),
+                            scaffoldLevel: Math.min(4, Math.floor(data.pMastery * 5)),
                         };
                     }
                 });

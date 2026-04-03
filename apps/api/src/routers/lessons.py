@@ -116,6 +116,24 @@ async def get_mcqs(
     return await fs.get_mcqs(lesson_id, subtopic_id)
 
 
+@router.patch("/{lesson_id}/publish")
+async def publish_lesson(
+    lesson_id: str,
+    token: dict = Depends(verify_firebase_token),
+):
+    """Publish a lesson so students can enroll."""
+    fs = FirestoreService()
+    lesson = await fs.get_lesson(lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    if lesson.get("teacherId") != token["uid"]:
+        raise HTTPException(status_code=403, detail="Not your lesson")
+    if lesson.get("ingestion", {}).get("step") != "complete":
+        raise HTTPException(status_code=400, detail="Ingestion not complete")
+    await fs.update_lesson(lesson_id, {"status": "published"})
+    return {"status": "published", "lessonId": lesson_id}
+
+
 @router.get("")
 async def list_lessons(token: dict = Depends(verify_firebase_token)):
     """List all lessons for the authenticated teacher."""

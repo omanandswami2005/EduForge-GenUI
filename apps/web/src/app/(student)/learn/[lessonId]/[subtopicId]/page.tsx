@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useBKTStore } from "@/stores/bktStore";
 import { useGenUI } from "@/hooks/useGenUI";
@@ -80,67 +81,66 @@ export default function SubtopicLearnPage() {
     const currentMCQ = mcqs[currentMCQIdx];
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <nav className="bg-white border-b border-gray-200 px-6 py-3">
-                <h1 className="text-xl font-bold">
-                    Edu<span className="text-blue-600">Forge</span>
-                    <span className="text-sm font-normal text-gray-500 ml-2">
-                        {subtopic?.title || "Loading..."}
-                    </span>
-                </h1>
-            </nav>
+        <main className="max-w-7xl mx-auto px-6 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left: GenUI Visualization */}
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                            AI Visualization
+                            {isStreaming && (
+                                <span className="ml-2 text-sm font-normal text-blue-500 animate-pulse">
+                                    Generating...
+                                </span>
+                            )}
+                        </h3>
+                        <GenUIRenderer components={components} />
+                    </div>
 
-            <main className="max-w-7xl mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left: GenUI Visualization */}
-                    <div className="lg:col-span-2 space-y-6">
+                    {/* MCQ Section */}
+                    {currentMCQ && (
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                AI Visualization
-                                {isStreaming && (
-                                    <span className="ml-2 text-sm font-normal text-blue-500 animate-pulse">
-                                        Generating...
-                                    </span>
-                                )}
-                            </h3>
-                            <GenUIRenderer components={components} />
-                        </div>
-
-                        {/* MCQ Section */}
-                        {currentMCQ && (
-                            <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-semibold text-gray-900">
-                                        Question {currentMCQIdx + 1} of {mcqs.length}
-                                    </h3>
-                                </div>
-                                <AdaptiveMCQ
-                                    question={currentMCQ}
-                                    onAnswer={handleAnswer}
-                                    bktUpdateResult={bktResult}
-                                />
-                                {bktResult && currentMCQIdx < mcqs.length - 1 && (
-                                    <button
-                                        onClick={nextQuestion}
-                                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-                                    >
-                                        Next Question →
-                                    </button>
-                                )}
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Question {currentMCQIdx + 1} of {mcqs.length}
+                                </h3>
                             </div>
-                        )}
-                    </div>
-
-                    {/* Right: Mastery HUD */}
-                    <div>
-                        <MasteryHUD
-                            studentId={studentId}
-                            lessonId={lessonId}
-                            concepts={subtopic?.keyConcepts?.map((c: string) => ({ id: c, label: c })) || []}
-                        />
-                    </div>
+                            <AdaptiveMCQ
+                                question={currentMCQ}
+                                onAnswer={handleAnswer}
+                                bktUpdateResult={bktResult}
+                            />
+                            {bktResult && currentMCQIdx < mcqs.length - 1 && (
+                                <button
+                                    onClick={nextQuestion}
+                                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                                >
+                                    Next Question →
+                                </button>
+                            )}
+                            {bktResult && currentMCQIdx === mcqs.length - 1 && (
+                                <div className="mt-4 flex gap-3">
+                                    <Link
+                                        href={`/learn/${lessonId}`}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
+                                    >
+                                        ← Back to Lesson
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
-            </main>
-        </div>
+
+                {/* Right: Mastery HUD */}
+                <div>
+                    <MasteryHUD
+                        studentId={studentId}
+                        lessonId={lessonId}
+                        concepts={subtopic?.keyConcepts?.map((c: string) => ({ id: c, label: c })) || []}
+                    />
+                </div>
+            </div>
+        </main>
     );
 }

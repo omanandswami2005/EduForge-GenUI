@@ -18,10 +18,11 @@ export function MasteryHUD({
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Concept Mastery</h3>
             <div className="space-y-2">
                 {concepts.map((c) => {
-                    const key = Object.keys(bktStates).find((k) =>
-                        k.includes(c.id.toLowerCase().replace(/\s+/g, "_"))
-                    );
-                    const state = key ? bktStates[key] : null;
+                    const normalized = c.id.toLowerCase().replace(/\s+/g, "_");
+                    const state = bktStates[c.id] || bktStates[normalized] ||
+                        Object.values(bktStates).find((s) =>
+                            s.conceptId.toLowerCase().replace(/\s+/g, "_") === normalized
+                        ) || null;
                     const p = state?.pMastery ?? 0.2;
                     const pct = Math.round(p * 100);
 

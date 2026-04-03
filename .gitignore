@@ -49,5 +49,4 @@ htmlcov/
 .pytest_cache/
 
 # Misc
-*.pdf.secrets/
-*.pdf
+.secrets/

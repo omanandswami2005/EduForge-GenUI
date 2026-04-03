@@ -11,20 +11,20 @@ interface Lesson {
     subject: string;
     status: string;
     createdAt: string;
-    ingestion?: { step: string; progress: number; message: string };
+    ingestion?: { step: string; progress: number; message: string; subtopicsFound?: number; mcqsGenerated?: number };
 }
 
-export default function TeacherDashboard() {
+export default function TeacherLessonsPage() {
     const { token } = useSessionStore();
     const [lessons, setLessons] = useState<Lesson[]>([]);
-    const [loadingLessons, setLoadingLessons] = useState(true);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (token) {
             api.getTeacherLessons(token)
                 .then(setLessons)
                 .catch(console.error)
-                .finally(() => setLoadingLessons(false));
+                .finally(() => setLoading(false));
         }
     }, [token]);
 
@@ -40,7 +40,7 @@ export default function TeacherDashboard() {
     return (
         <main className="max-w-6xl mx-auto px-6 py-8">
             <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-gray-900">My Lessons</h2>
+                <h2 className="text-2xl font-bold text-gray-900">All Lessons</h2>
                 <Link
                     href="/lessons/new"
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
@@ -49,7 +49,7 @@ export default function TeacherDashboard() {
                 </Link>
             </div>
 
-            {loadingLessons ? (
+            {loading ? (
                 <div className="text-center py-12 text-gray-500">Loading lessons...</div>
             ) : lessons.length === 0 ? (
                 <div className="text-center py-12">
@@ -87,6 +87,12 @@ export default function TeacherDashboard() {
                                             style={{ width: `${lesson.ingestion.progress}%` }}
                                         />
                                     </div>
+                                </div>
+                            )}
+                            {lesson.ingestion?.step === "complete" && (
+                                <div className="mt-3 flex gap-4 text-sm text-gray-500">
+                                    <span>{lesson.ingestion.subtopicsFound} subtopics</span>
+                                    <span>{lesson.ingestion.mcqsGenerated} MCQs</span>
                                 </div>
                             )}
                         </Link>

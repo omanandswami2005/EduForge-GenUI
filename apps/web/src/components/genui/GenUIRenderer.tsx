@@ -17,10 +17,24 @@ export function GenUIRenderer({ components }: { components: GenUIComponent[] }) 
     return (
         <div className="space-y-6">
             {components.map((comp, idx) => (
-                <div key={idx}>{renderComponent(comp)}</div>
+                <div key={idx}>
+                    <ComponentWrapper component={comp} />
+                </div>
             ))}
         </div>
     );
+}
+
+function ComponentWrapper({ component: comp }: { component: GenUIComponent }) {
+    try {
+        return renderComponent(comp);
+    } catch {
+        return (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                Failed to render component: {comp.component}
+            </div>
+        );
+    }
 }
 
 function renderComponent({ component, props }: GenUIComponent) {
