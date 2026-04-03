@@ -16,15 +16,17 @@ Student answers MCQ → BKT updates P(mastery) → Scaffold level (0-4) resolves
 
 | Service | Port | Role |
 |---------|------|------|
-| **Next.js Frontend** | 3000 | Teacher/Student UI, SSR, API routing |
+| **Next.js Frontend** | 3000 | Teacher/Student UI, SSR, API routing, GenUI generation |
 | **API Gateway** (FastAPI) | 8000 | Auth proxy, lesson CRUD, enrollment, analytics |
 | **BKT Service** (FastAPI) | 8001 | Bayesian Knowledge Tracing engine, scaffold resolver |
-| **GenUI Service** (FastAPI) | 8002 | Gemini-powered visualization & Socratic tutor streaming |
-| **Ingestion Worker** | 8003 | Pub/Sub-triggered PPT→subtopics→MCQ pipeline |
+| **Ingestion Worker** (FastAPI) | 8003 | Pub/Sub-triggered PPT→subtopics→MCQ pipeline |
 
-**Data stores:** Firestore (native), GCS buckets, Pub/Sub  
-**Auth:** Firebase Authentication (email/password) + JWT tokens  
+> **Note:** GenUI generation is handled directly by the Next.js app via a server-side API route (`/api/genui`). It uses the **Vercel AI SDK** (`ai` + `@ai-sdk/google`) to call Gemini 2.5 Flash with Zod-based structured output. There is no separate GenUI microservice.
+
+**Data stores:** Firestore (native), GCS buckets, Pub/Sub
+**Auth:** Firebase Authentication (email/password) + JWT tokens
 **AI:** Google Gemini 2.5 Flash for all LLM tasks
+**GenUI SDK:** Vercel AI SDK (`ai@6`, `@ai-sdk/google`, `@ai-sdk/react`)
 
 ---
 
@@ -137,16 +139,18 @@ This is the heart of EduForge — the adaptive learning experience:
 
 1. **Page loads**: MCQs fetched via `GET /lessons/{lessonId}/subtopics/{subtopicId}/mcqs`
 2. **Initial GenUI generation**: `useGenUI` hook calls `POST /api/genui` with the first concept
-3. **GenUI server route** orchestrates:
+3. **GenUI API route** (`apps/web/src/app/api/genui/route.ts`) orchestrates:
    - Fetches BKT state → `GET /bkt/state?studentId=X&conceptId=Y`
    - Resolves scaffold level → `GET /bkt/scaffold?p_mastery=0.2`
-   - Streams visualization → `POST /genui-service/stream/visualize`
-4. **Gemini generates** a constrained JSON array of UI components based on scaffold level
-5. **Frontend validates** components against `ALLOWED_MAP[scaffoldLevel]` and renders them
-6. **Student reads visualization**, then answers the MCQ
+   - Builds pedagogical prompt with allowed/forbidden components
+   - Streams structured output via Vercel AI SDK (`streamText` + `Output.object({ schema })`)
+4. **Gemini 2.5 Flash generates** a Zod-validated JSON object containing 1-3 UI components constrained by scaffold level
+5. **Client-side `useGenUI` hook** uses `experimental_useObject` from `@ai-sdk/react` to consume the stream and progressively render components
+6. **GenUI cache** (`genUIStore`) persists results in localStorage (1hr TTL) to avoid re-generation
+7. **Student reads visualization**, then answers the MCQ
 
 #### On MCQ answer:
-7. Frontend calls `POST /bkt/update` with:
+8. Frontend calls `POST /bkt/update` with:
    ```json
    {
      "student_id": "...",
@@ -155,21 +159,21 @@ This is the heart of EduForge — the adaptive learning experience:
      "time_taken_seconds": 12
    }
    ```
-8. **BKT Engine** runs Bayesian update:
+9. **BKT Engine** runs Bayesian update:
    - If correct: `P(mastery) increases` based on `P(T)` and `1 - P(S)`
    - If wrong: `P(mastery) may decrease` based on `P(G)`
    - Tracks `consecutiveCorrect`, `consecutiveWrong`, `totalAttempts`
    - If 3+ consecutive wrong → **misconception detected**
-9. **Scaffold Resolver** maps new `P(mastery)` to level 0-4:
-   - Level 0 (Novice): `P < 0.2` — StepByStep, HintCard, FormulaCard, AnalogyCard
-   - Level 1 (Developing): `0.2 ≤ P < 0.4` — StepByStep, HintCard, FormulaCard, ConceptDiagram
-   - Level 2 (Approaching): `0.4 ≤ P < 0.6` — ConceptDiagram, FormulaCard, HintCard, PracticeExercise
-   - Level 3 (Proficient): `0.6 ≤ P < 0.8` — ConceptDiagram, PracticeExercise, ProofWalkthrough
-   - Level 4 (Mastered): `P ≥ 0.8` — ConceptDiagram, ExpertSummary, ProofWalkthrough, PracticeExercise
-10. If scaffold level changed → **GenUI regenerates** with new component constraints
-11. **MasteryHUD updates** in real-time showing per-concept progress bars
-12. Student proceeds to next MCQ → repeat from step 6
-13. After all MCQs → **"Back to Lesson"** link to return and pick next subtopic
+10. **Scaffold Resolver** maps new `P(mastery)` to level 0-4:
+    - Level 0 (Novice): `P < 0.2` — StepByStep, HintCard, FormulaCard, AnalogyCard
+    - Level 1 (Developing): `0.2 ≤ P < 0.4` — StepByStep, HintCard, FormulaCard, ConceptDiagram
+    - Level 2 (Approaching): `0.4 ≤ P < 0.6` — ConceptDiagram, FormulaCard, HintCard, PracticeExercise
+    - Level 3 (Proficient): `0.6 ≤ P < 0.8` — ConceptDiagram, PracticeExercise, ProofWalkthrough
+    - Level 4 (Mastered): `P ≥ 0.8` — ConceptDiagram, ExpertSummary, ProofWalkthrough, PracticeExercise
+11. If scaffold level changed → **GenUI regenerates** with new component constraints
+12. **MasteryHUD updates** in real-time showing per-concept progress bars
+13. Student proceeds to next MCQ → repeat from step 7
+14. After all MCQs → **"Back to Lesson"** link to return and pick next subtopic
 
 ### 2.5 Mastery Threshold
 - When `P(mastery) ≥ 0.95` for a concept → marked as **mastered**
@@ -191,7 +195,41 @@ This is the heart of EduForge — the adaptive learning experience:
 | **ProofWalkthrough** | Formal proof steps with justifications | 3, 4 |
 | **ExpertSummary** | Dense expert-level overviews | 4 |
 
-**Key constraint**: The BKT posterior is a *hard constraint* on LLM generation. A Level 0 student will never see ProofWalkthrough or ExpertSummary, regardless of what the LLM would prefer to generate. This is enforced at the prompt level (system prompt includes allowed/forbidden components) and at the frontend level (validation filter).
+**Key constraint**: The BKT posterior is a *hard constraint* on LLM generation. A Level 0 student will never see ProofWalkthrough or ExpertSummary, regardless of what the LLM would prefer to generate. This is enforced at the **prompt level** (system prompt includes allowed/forbidden components) and through **Zod schema validation** on the structured output.
+
+---
+
+## GenUI Technical Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Client (React)                                                  │
+│                                                                  │
+│  useGenUI hook                                                   │
+│  └── experimental_useObject(@ai-sdk/react)                       │
+│      ├── Checks genUIStore cache (localStorage, 1hr TTL)         │
+│      ├── If miss → POST /api/genui                               │
+│      ├── Streams Zod-validated object progressively               │
+│      └── On finish → stores in genUIStore cache                  │
+│                                                                  │
+├──────────────────────────────────────────────────────────────────┤
+│  Server (Next.js API Route: /api/genui)                          │
+│                                                                  │
+│  1. Fetch BKT state from BKT service (3s timeout, fallback)      │
+│  2. Fetch scaffold decision (level 0-4, allowed components)      │
+│  3. buildGenUIPrompt() — pedagogical rules + constraints          │
+│  4. streamText(model: gemini-2.5-flash, Output.object({schema})) │
+│  5. Return toTextStreamResponse()                                │
+│                                                                  │
+├──────────────────────────────────────────────────────────────────┤
+│  Schema (genui-schema.ts)                                        │
+│                                                                  │
+│  Zod discriminated union of 8 component types                    │
+│  ALLOWED_MAP: scaffold level → component names                   │
+│  PEDAGOGICAL_RULES: scaffold level → behavior instructions       │
+│  buildGenUIPrompt(): combines all constraints into system prompt │
+└──────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -213,13 +251,13 @@ TEACHER                              STUDENT
   │       │       ├── Extract          │       ├── Load MCQs
   │       │       ├── Parse            │       ├── Generate GenUI
   │       │       ├── Topics           │       │       │
-  │       │       ├── MCQs             │       │    ┌──┴──┐
-  │       │       ├── Graph            │       │    BKT  GenUI
-  │       │       ├── BKT Seed         │       │    Svc  Svc
-  │       │       └── Complete         │       │    └──┬──┘
+  │       │       ├── MCQs             │       │    ┌──┴──────┐
+  │       │       ├── Graph            │       │    BKT   Next.js
+  │       │       ├── BKT Seed         │       │    Svc   /api/genui
+  │       │       └── Complete         │       │    └──┬──────┘
   │       │                            │       │       │
-  │    Firestore ←───────────────────────────────────┘
-  │       │                            │       │
+  │    Firestore ←─────────────────────┘       │    Gemini 2.5 Flash
+  │       │                            │       │       │
   ├── Publish ──→ API                  │       ├── Answer MCQ
   │                                    │       │       │
   ├── Share ID ──→ (out-of-band)       │       │    BKT Update
@@ -255,7 +293,8 @@ TEACHER                              STUDENT
 | Firestore real-time listeners | Ingestion progress updates without polling |
 | Pub/Sub for ingestion | Decouples upload from heavy processing; enables retry |
 | BKT as separate service | Stateless math engine; scales independently |
-| GenUI as SSE stream | Progressive rendering; user sees components appear |
+| Vercel AI SDK for GenUI | Type-safe Zod structured output, streaming `useObject` hook, no custom SSE parsing |
+| GenUI in Next.js (not separate service) | Fewer moving parts; Gemini called directly via `@ai-sdk/google`; no service-to-service latency |
 | Frontend component validation | Defense-in-depth; LLM can't bypass scaffold rules |
 | Zustand (not Redux) | Minimal boilerplate for 2-store app |
-| Server-side GenUI route | Keeps service URLs private; adds error handling layer |
+| GenUI cache (localStorage) | Avoid re-generation for same concept; 1hr TTL |

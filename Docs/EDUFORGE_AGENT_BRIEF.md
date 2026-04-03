@@ -108,17 +108,17 @@ The BKT state is a **first-class input** to the UI generation pipeline — not a
 │  Concept gating  │        │  Class Heatmap   │  Mastery HUD          │
 └──────────────────┘        └──────────────────────────────────────────┘
            │                          │
-           └────────────────────────► │ GenUI API call (with BKT state)
-                                      ▼
-                          ┌──────────────────────────┐
-                          │  GENUI SERVICE (Cloud Run)│
-                          │                          │
-                          │  BKT state → scaffold lvl│
-                          │  → allowed components    │
-                          │  → OpenUI system prompt  │
-                          │  → Claude API stream     │
-                          │  → React component tree  │
-                          └──────────────────────────┘
+           └────────────────────────► │ GenUI via /api/genui route
+                                      │ (Vercel AI SDK + Gemini 2.5 Flash)
+                                      │
+                                      │ BKT state → scaffold level
+                                      │ → allowed components (Zod schema)
+                                      │ → streamText + Output.object
+                                      │ → React component stream
+
+> **Note:** GenUI generation is integrated directly into the Next.js app
+> using the Vercel AI SDK (`ai@6` + `@ai-sdk/google`). There is no
+> separate GenUI microservice.
 ```
 
 ### 2.1 GCP Services Used
@@ -239,15 +239,11 @@ gcloud iam service-accounts create eduforge-bkt \
   --display-name="EduForge BKT Service" \
   --project=$PROJECT_ID
 
-# GenUI Service Account
-gcloud iam service-accounts create eduforge-genui \
-  --display-name="EduForge GenUI Service" \
-  --project=$PROJECT_ID
+# Note: GenUI is now handled by the Next.js app via Vercel AI SDK — no separate service account needed.
 
 API_SA="eduforge-api@${PROJECT_ID}.iam.gserviceaccount.com"
 INGESTION_SA="eduforge-ingestion@${PROJECT_ID}.iam.gserviceaccount.com"
 BKT_SA="eduforge-bkt@${PROJECT_ID}.iam.gserviceaccount.com"
-GENUI_SA="eduforge-genui@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Grant roles to API service account
 gcloud projects add-iam-policy-binding $PROJECT_ID \
@@ -300,14 +296,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:${BKT_SA}" \
   --role="roles/datastore.user"
 
-# GenUI service - Secret Manager for API keys
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${GENUI_SA}" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${GENUI_SA}" \
-  --role="roles/datastore.viewer"
+# Note: GenUI is handled by Next.js — uses GEMINI_API_KEY env var directly
 
 echo "✅ Service accounts created and roles assigned"
 ```
@@ -706,20 +695,10 @@ eduforge/
 │   │       └── fixtures/
 │   │           └── sample.pptx
 │   │
-│   └── genui-service/                  # GenUI Streaming (Cloud Run)
-│       ├── Dockerfile
-│       ├── requirements.txt            # OR package.json if Node.js
-│       ├── main.py
-│       ├── src/
-│       │   ├── genui/
-│       │   │   ├── catalog.py          # Component catalog definitions
-│       │   │   ├── prompt_builder.py   # BKT state → system prompt
-│       │   │   └── streamer.py         # Claude API streaming
-│       │   └── routers/
-│       │       ├── visualize.py        # POST /genui/visualize
-│       │       └── chat.py             # POST /genui/chat (AI tutor)
-│       └── tests/
-│           └── test_prompt_builder.py
+│   └── genui-service/                  # REMOVED — GenUI now in Next.js via Vercel AI SDK
+│       # See apps/web/src/app/api/genui/route.ts
+│       # See apps/web/src/lib/genui-schema.ts
+│       # See apps/web/src/hooks/useGenUI.ts
 ```
 
 ---
@@ -2449,163 +2428,75 @@ export const GATED_LIBRARIES: Record<number, ReturnType<typeof createLibrary>> =
 };
 ```
 
-### 9.2 GenUI Streaming Service
+### 9.2 GenUI Generation (Vercel AI SDK — Next.js API Route)
 
-```python
-# apps/genui-service/src/genui/streamer.py
-import anthropic
-import json
-import os
-from .prompt_builder import GenUIPromptBuilder
-from .catalog import get_catalog_for_scaffold_level
-
-client = anthropic.Anthropic(api_key=os.environ['CLAUDE_API_KEY'])
-
-class GenUIStreamer:
-    """
-    Streams a BKT-constrained GenUI visualization for a concept.
-    The BKT scaffold level determines which OpenUI components the LLM can use.
-    
-    This is the core neuro-symbolic fusion:
-    Symbolic BKT posterior → component catalog constraint → Neural LLM generation
-    """
-    
-    def stream_visualization(
-        self,
-        concept: str,
-        concept_content: str,
-        bkt_state: dict,  # From BKT service
-        scaffold_decision: dict,  # From scaffold resolver
-        student_name: str = "the student"
-    ):
-        """
-        Yields streaming GenUI JSON tokens.
-        The component catalog passed to the LLM is determined by bkt_state.p_mastery.
-        """
-        
-        prompt_builder = GenUIPromptBuilder()
-        system_prompt = prompt_builder.build(
-            allowed_components=scaffold_decision['allowed_components'],
-            scaffold_level=scaffold_decision['level'],
-            p_mastery=bkt_state['p_mastery'],
-        )
-        
-        user_message = f"""Create a learning visualization for this concept:
-
-CONCEPT: {concept}
-
-CONTENT FROM LESSON:
-{concept_content}
-
-STUDENT STATE:
-- Mastery: {bkt_state['p_mastery']:.2f} ({scaffold_decision['level_name']})
-- Attempts: {bkt_state.get('attempts', 0)}
-- Last answer correct: {bkt_state.get('last_correct', None)}
-
-Generate the most appropriate visualization using ONLY the allowed components.
-Tailor the depth, complexity, and language to the student's mastery level."""
-        
-        # Stream from Claude API
-        with client.messages.stream(
-            model="claude-sonnet-4-6",
-            max_tokens=2000,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
-    
-    def stream_tutor_response(
-        self,
-        student_message: str,
-        concept: str,
-        bkt_state: dict,
-        scaffold_decision: dict,
-        conversation_history: list,
-    ):
-        """
-        Streams a Socratic tutor response constrained by BKT scaffold level.
-        At high mastery: ask leading questions, don't give answers.
-        At low mastery: explain clearly, provide scaffold.
-        """
-        
-        level = scaffold_decision['level']
-        p_mastery = bkt_state['p_mastery']
-        
-        tutor_system = f"""You are an expert tutor helping a student understand: {concept}
-
-{scaffold_decision['system_prompt_fragment']}
-
-BEHAVIORAL RULES:
-{"- DO NOT give direct answers. Ask Socratic leading questions." if level >= 4 else ""}
-{"- Guide with hints. Never overwhelm. One step at a time." if level <= 1 else ""}
-{"- Use simple language. Avoid jargon. Use analogies." if level == 0 else ""}
-- Be encouraging and supportive at all times.
-- Keep responses concise (3-5 sentences max unless explanation requires more).
-- If student is confused, reframe the concept from a different angle.
-
-FORBIDDEN: Do not mention P(mastery), BKT, scaffold levels, or any system internals."""
-
-        messages = conversation_history + [
-            {"role": "user", "content": student_message}
-        ]
-        
-        with client.messages.stream(
-            model="claude-sonnet-4-6",
-            max_tokens=800,
-            system=tutor_system,
-            messages=messages,
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
-```
-
-### 9.3 GenUI API Route (Next.js Streaming)
+> **Architecture change:** The GenUI streaming service has been migrated from a standalone
+> Python/FastAPI microservice to a Next.js API route using the Vercel AI SDK. This eliminates
+> the need for a separate service, custom SSE parsing, and service-to-service latency.
 
 ```typescript
 // apps/web/src/app/api/genui/route.ts
-import { NextRequest } from 'next/server';
+import { streamText, Output } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { genUISchema, ALLOWED_MAP, buildGenUIPrompt } from "@/lib/genui-schema";
 
-export const runtime = 'edge'; // Use Edge runtime for streaming
+const google = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(req: NextRequest) {
-  const { 
-    conceptId, 
-    subtopicId, 
-    lessonId, 
-    studentId,
-    type // 'visualize' | 'chat'
-  } = await req.json();
-
-  // 1. Get current BKT state from BKT service
-  const bktResponse = await fetch(
-    `${process.env.BKT_SERVICE_URL}/state?studentId=${studentId}&conceptId=${conceptId}`
-  );
-  const bktState = await bktResponse.json();
-  
-  // 2. Get scaffold decision
-  const scaffoldResponse = await fetch(
-    `${process.env.BKT_SERVICE_URL}/scaffold?p_mastery=${bktState.p_mastery}`
-  );
-  const scaffoldDecision = await scaffoldResponse.json();
-
-  // 3. Stream from GenUI service
-  const genUIResponse = await fetch(`${process.env.GENUI_SERVICE_URL}/stream`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bktState, scaffoldDecision, conceptId, lessonId, type }),
-  });
-
-  // 4. Pass through the stream to the client
-  return new Response(genUIResponse.body, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+    const { conceptId, subtopicId, lessonId, studentId } = await req.json();
+    
+    // 1. Get BKT state (3s timeout, graceful fallback)
+    // 2. Get scaffold decision (level 0-4, allowed components)
+    // 3. Build pedagogical prompt with allowed/forbidden components
+    
+    const result = streamText({
+        model: google("gemini-2.5-flash"),
+        output: Output.object({ schema: genUISchema }),
+        prompt: buildGenUIPrompt({ scaffoldLevel, pMastery, allowed, conceptName }),
+    });
+    return result.toTextStreamResponse();
 }
 ```
+
+```typescript
+// apps/web/src/lib/genui-schema.ts — Zod schemas for all 8 component types
+export const genUIComponentSchema = z.discriminatedUnion("component", [
+    stepByStepSchema, hintCardSchema, formulaCardSchema, conceptDiagramSchema,
+    analogyCardSchema, practiceExerciseSchema, proofWalkthroughSchema, expertSummarySchema,
+]);
+
+export const genUISchema = z.object({
+    components: z.array(genUIComponentSchema).describe("1-3 educational UI components"),
+});
+```
+
+```typescript
+// apps/web/src/hooks/useGenUI.ts — Client-side streaming with cache
+import { experimental_useObject as useObject } from "@ai-sdk/react";
+import { useGenUIStore } from "@/stores/genUIStore";
+import { genUISchema } from "@/lib/genui-schema";
+
+export function useGenUI(studentId: string) {
+    const { object, submit, isLoading } = useObject({
+        api: "/api/genui",
+        schema: genUISchema,
+        onFinish({ object }) { /* store in genUIStore cache */ },
+    });
+    // Checks localStorage cache (1hr TTL) before making API calls
+    // Returns { components, isStreaming, error, generate }
+}
+```
+
+### 9.3 GenUI API Route (Vercel AI SDK Streaming)
+
+The GenUI route is now a standard Next.js API route that calls Gemini directly via the Vercel AI SDK.
+See section 9.2 above for the complete implementation.
+
+Key features:
+- Uses `streamText` + `Output.object({ schema: genUISchema })` for Zod-validated structured output
+- Fetches BKT state from BKT service with 3-second timeout and graceful fallback
+- Returns `result.toTextStreamResponse()` which the client's `experimental_useObject` consumes
+- No custom SSE parsing needed — the Vercel AI SDK handles the protocol
 
 ---
 
@@ -2885,14 +2776,17 @@ GET    /scaffold?p_mastery=         → Scaffold level + allowed components
 GET    /lesson-states?studentId=&lessonId= → All concept states for a lesson
 ```
 
-### 12.3 GenUI Service
+### 12.3 GenUI (Next.js API Route)
 
 ```
-Base URL: https://genui-{PROJECT_ID}-uc.a.run.app
+Base URL: /api/genui (Next.js server-side route)
 
-POST   /stream/visualize            → SSE stream of GenUI component JSON
-POST   /stream/chat                 → SSE stream of AI tutor response
+POST   /api/genui   → Streams Zod-validated GenUI components via Vercel AI SDK
+                       Uses streamText + Output.object({ schema: genUISchema })
+                       Model: Gemini 2.5 Flash via @ai-sdk/google
 ```
+
+> **Note:** GenUI is no longer a separate microservice. It runs inside the Next.js app.
 
 ---
 
@@ -3386,7 +3280,7 @@ echo "Building and pushing images with tag: $TAG"
 gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
 
 # Build and push each service
-services=("api" "bkt-service" "ingestion" "genui-service")
+services=("api" "bkt-service" "ingestion")
 
 for service in "${services[@]}"; do
   echo "--- Building ${service} ---"
@@ -3419,7 +3313,6 @@ TAG="${1:-latest}"
 API_SA="eduforge-api@${PROJECT_ID}.iam.gserviceaccount.com"
 INGESTION_SA="eduforge-ingestion@${PROJECT_ID}.iam.gserviceaccount.com"
 BKT_SA="eduforge-bkt@${PROJECT_ID}.iam.gserviceaccount.com"
-GENUI_SA="eduforge-genui@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "🚀 Deploying EduForge to GCP project: $PROJECT_ID"
 
@@ -3464,27 +3357,7 @@ BKT_URL=$(gcloud run services describe eduforge-bkt \
   --project=$PROJECT_ID)
 echo "✅ BKT Service: $BKT_URL"
 
-# ── DEPLOY GENUI SERVICE ──────────────────────────────────────────────────
-echo "--- Deploying GenUI Service ---"
-gcloud run deploy eduforge-genui \
-  --image="${REGISTRY}/genui-service:${TAG}" \
-  --region=$REGION \
-  --service-account=$GENUI_SA \
-  --no-allow-unauthenticated \
-  --memory=512Mi \
-  --cpu=1 \
-  --min-instances=0 \
-  --max-instances=10 \
-  --timeout=300 \
-  --set-secrets="CLAUDE_API_KEY=CLAUDE_API_KEY:latest" \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID}" \
-  --project=$PROJECT_ID
-
-GENUI_URL=$(gcloud run services describe eduforge-genui \
-  --region=$REGION \
-  --format="value(status.url)" \
-  --project=$PROJECT_ID)
-echo "✅ GenUI Service: $GENUI_URL"
+# Note: GenUI Service has been removed — GenUI now runs inside Next.js via Vercel AI SDK
 
 # ── DEPLOY INGESTION TRIGGER SERVICE ─────────────────────────────────────
 echo "--- Deploying Ingestion Trigger Service ---"
@@ -3527,7 +3400,6 @@ cd apps/web
 # Build Next.js with environment variables
 NEXT_PUBLIC_API_URL=$API_URL \
 NEXT_PUBLIC_BKT_URL=$BKT_URL \
-NEXT_PUBLIC_GENUI_URL=$GENUI_URL \
 npm run build
 
 firebase deploy --only hosting --project=$PROJECT_ID
@@ -3549,7 +3421,6 @@ echo "╠═══════════════════════�
 echo "║  Frontend:   $FRONTEND_URL"
 echo "║  API:        $API_URL"
 echo "║  BKT:        $BKT_URL"
-echo "║  GenUI:      $GENUI_URL"
 echo "║  Ingestion:  $INGESTION_URL"
 echo "╚════════════════════════════════════════════════════════╝"
 ```
@@ -3579,7 +3450,6 @@ echo "✅ All services started"
 echo "  Frontend: http://localhost:3000"
 echo "  API:      http://localhost:8000"
 echo "  BKT:      http://localhost:8001"
-echo "  GenUI:    http://localhost:8002"
 ```
 
 ```yaml
@@ -3592,9 +3462,10 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_BKT_URL=http://localhost:8001
-      - NEXT_PUBLIC_GENUI_URL=http://localhost:8002
+      - BKT_SERVICE_URL=http://bkt-service:8080
+      - API_SERVICE_URL=http://api:8080
     env_file: .env.local
-    depends_on: [api, bkt-service, genui-service]
+    depends_on: [api, bkt-service]
     volumes:
       - ./apps/web/src:/app/src
 
@@ -3611,11 +3482,6 @@ services:
     ports: ["8001:8080"]
     environment:
       - GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
-    env_file: .env.local
-
-  genui-service:
-    build: ./apps/genui-service
-    ports: ["8002:8080"]
     env_file: .env.local
 
   ingestion:
@@ -3646,7 +3512,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 
 # AI APIs
-CLAUDE_API_KEY=sk-ant-...
+CLAUDE_API_KEY=  # Optional, not currently used
 GEMINI_API_KEY=AIza...
 
 # Document AI
@@ -3654,9 +3520,9 @@ DOCUMENT_AI_PROCESSOR_ID=your-processor-id
 DOCUMENT_AI_LOCATION=us
 
 # Service URLs (local dev)
-NEXT_PUBLIC_API_URL=http://localhost:8000
 BKT_SERVICE_URL=http://localhost:8001
-GENUI_SERVICE_URL=http://localhost:8002
+API_SERVICE_URL=http://localhost:8000
+INGESTION_SERVICE_URL=http://localhost:8003
 
 # Storage
 LESSON_UPLOADS_BUCKET=your-project-lesson-uploads
@@ -3871,8 +3737,8 @@ if __name__ == '__main__':
 - [ ] `StepByStep`, `HintCard`, `FormulaCard`, `AnalogyCard` React implementations
 - [ ] `ConceptDiagram`, `PracticeExercise`, `ProofWalkthrough`, `ExpertSummary` implementations
 - [ ] GenUI prompt builder (BKT state → system prompt with component catalog)
-- [ ] GenUI streaming service (Claude API → SSE stream)
-- [ ] Next.js streaming route (`/api/genui`)
+- [ ] GenUI via Vercel AI SDK (`streamText` + `Output.object` + Zod schema)
+- [ ] Next.js API route (`/api/genui`) with BKT state fetch + Gemini streaming
 - [ ] AI Tutor Chat (BKT-gated system prompt, streaming responses)
 - [ ] Full student learning page layout (topic index + 4-panel GenUI area)
 
@@ -4394,7 +4260,8 @@ The GenUI system prompt is the most critical piece — it must enforce that the 
 #### 20.2.1 System Prompt Builder (Complete Implementation)
 
 ```python
-# apps/genui-service/src/genui/prompt_builder.py
+# Note: prompt_builder logic has been ported to TypeScript
+# See apps/web/src/lib/genui-schema.ts → buildGenUIPrompt() + PEDAGOGICAL_RULES
 """
 Builds the system prompt that goes to Claude for GenUI generation.
 The BKT state determines which components the LLM is ALLOWED to emit.
@@ -4742,58 +4609,20 @@ export function validateAndFilterGenUI(
 /**
  * Next.js API Route for GenUI streaming using Vercel AI SDK's streamUI pattern.
  * 
- * Architecture:
- * 1. Client calls this route with studentId + conceptId
- * 2. Route fetches BKT state from BKT service
- * 3. Route calls GenUI service which streams from Claude
- * 4. JSON components are streamed back via SSE
- * 5. Client-side renderer maps JSON → React components
+ * Architecture (UPDATED):
+ * 1. Client calls /api/genui with studentId + conceptId
+ * 2. Route fetches BKT state from BKT service (3s timeout + fallback)
+ * 3. Route calls Gemini 2.5 Flash directly via Vercel AI SDK
+ * 4. Zod-validated structured objects streamed back
+ * 5. Client-side experimental_useObject renders progressively
  */
 
-import { NextRequest } from 'next/server';
+import { streamText, Output } from 'ai';
 
-export const runtime = 'edge';
-
-export async function POST(req: NextRequest) {
-  const { conceptId, subtopicId, lessonId, studentId, type } = await req.json();
-
-  // 1. Get BKT state + scaffold decision in parallel
-  const [bktRes, conceptRes] = await Promise.all([
-    fetch(`${process.env.BKT_SERVICE_URL}/state?studentId=${studentId}&conceptId=${conceptId}`),
-    fetch(`${process.env.API_SERVICE_URL}/lessons/${lessonId}/subtopics/${subtopicId}`),
-  ]);
-  
-  const bktState = await bktRes.json();
-  const conceptData = await conceptRes.json();
-  
-  // 2. Get scaffold decision
-  const scaffoldRes = await fetch(
-    `${process.env.BKT_SERVICE_URL}/scaffold?p_mastery=${bktState.pMastery}`
-  );
-  const scaffold = await scaffoldRes.json();
-
-  // 3. Stream from GenUI service
-  const genUIRes = await fetch(`${process.env.GENUI_SERVICE_URL}/stream/${type}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      concept: conceptData.title,
-      concept_content: conceptData.description,
-      bkt_state: bktState,
-      scaffold_decision: scaffold,
-      student_name: 'Student',
-    }),
-  });
-
-  // 4. Pass through stream
-  return new Response(genUIRes.body, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
-}
+// NOTE: This old code has been replaced by the Vercel AI SDK implementation.
+// See section 9.2 for the current route.ts, genui-schema.ts, and useGenUI.ts code.
+// The route now uses streamText + Output.object({ schema: genUISchema })
+// and the client uses experimental_useObject from @ai-sdk/react.
 ```
 
 ```typescript
@@ -4920,7 +4749,7 @@ Client receives response:
   1. useBKTStore → updates scaffoldLevel + allowedComponents
   2. MasteryHUD re-renders with new P(mastery)
   3. If scaffold level CHANGED → useGenUI.generate() is called
-  4. GenUI panel streams new components from Claude (constrained by NEW scaffold level)
+  4. GenUI panel streams new components from Gemini (constrained by NEW scaffold level)
     │
     ▼
 Student sees: updated mastery bar + potentially new UI layout adapted to their level
@@ -4985,7 +4814,7 @@ When building ANY React component in apps/web/src/components/:
 | `uvicorn[standard]` | ASGI server | Production server. Use `--workers 2` for Cloud Run. |
 | `pydantic` | Data validation | Use Pydantic v2 models for ALL request/response schemas. |
 | `pyBKT` | Bayesian Knowledge Tracing | Use Roster API for online updates, Model.fit() for batch parameter fitting. |
-| `anthropic` | Claude API client | Use streaming API (`messages.stream()`) for GenUI generation. |
+| `ai` + `@ai-sdk/google` | Vercel AI SDK for Gemini | Use `streamText` + `Output.object` for structured GenUI output from Next.js API route. |
 | `google-generativeai` | Gemini API client | Use for ingestion pipeline (topic hierarchy, MCQ generation). |
 | `google-cloud-firestore` | Firestore client | Use `AsyncClient` for all Firestore operations. |
 | `google-cloud-storage` | GCS client | Use for PPT upload/download, image assets. |
@@ -4994,7 +4823,7 @@ When building ANY React component in apps/web/src/components/:
 | `python-pptx` | PPTX extraction | Use for slide-level text, image, and notes extraction. |
 | `structlog` | Structured logging (Python) | Use instead of stdlib `logging` for JSON-structured logs in Cloud Run. |
 | `httpx` | Async HTTP client | Use for service-to-service calls within the backend. |
-| `tenacity` | Retry logic | Use for Gemini/Claude API calls with exponential backoff. |
+| `tenacity` | Retry logic | Use for Gemini API calls with exponential backoff. |
 
 #### 21.1.3 Agent Instructions — Coding Standards
 
@@ -5339,32 +5168,8 @@ async def update_bkt(request: MCQAnswerRequest):
 ```
 
 ```python
-# apps/genui-service/main.py
-from logging_config import setup_logging, get_logger
-setup_logging()
-
-logger = get_logger('genui-service')
-
-async def stream_visualization(self, concept, bkt_state, scaffold):
-    logger.info(
-        "GenUI stream started",
-        concept=concept,
-        scaffold_level=scaffold['level'],
-        p_mastery=bkt_state['p_mastery'],
-        allowed_components=','.join(scaffold['allowed_components']),
-    )
-    
-    token_count = 0
-    async for token in stream:
-        token_count += 1
-        yield token
-    
-    logger.info(
-        "GenUI stream complete",
-        concept=concept,
-        tokens_generated=token_count,
-        scaffold_level=scaffold['level'],
-    )
+# Note: GenUI is now part of the Next.js app — see apps/web/src/app/api/genui/route.ts
+# Logging is handled by the Vercel AI SDK's built-in error handling
 ```
 
 ```python
@@ -5414,7 +5219,7 @@ async def run_ingestion(lesson_id, gcs_path):
 | **BKT mastery events** | When a student masters a concept | `info` | `studentId`, `conceptId`, `subtopicId`, `attempts`, `pMastery` |
 | **Scaffold level change** | When scaffold level transitions | `info` | `studentId`, `conceptId`, `fromLevel`, `toLevel` |
 | **Misconception detection** | When 3+ consecutive wrong answers detected | `warn` | `studentId`, `conceptId`, `consecutiveWrong`, `misconceptionType` |
-| **GenUI stream start/end** | Claude API call initiation and completion | `info` | `conceptId`, `scaffoldLevel`, `allowedComponents`, `tokenCount`, `durationMs` |
+| **GenUI stream start/end** | Gemini API call via Vercel AI SDK | `info` | `conceptId`, `scaffoldLevel`, `allowedComponents`, `tokenCount`, `durationMs` |
 | **GenUI validation** | Components stripped by validator | `warn` | `strippedComponent`, `scaffoldLevel`, `reason` |
 | **Firestore reads/writes** | Collection, document ID, operation type | `debug` | `collection`, `docId`, `operation` |
 | **API errors** | Any unhandled exception in routes | `error` | `path`, `method`, `errorType`, `errorMessage`, `stack` |

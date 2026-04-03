@@ -2,9 +2,9 @@
 
 ## Overview
 
-This document describes how end-to-end testing was set up for the EduForge-GenUI platform — a BKT-powered adaptive learning system. The goal was to run **everything real**: real GCP infrastructure, real Firebase Auth, real Firestore persistence, real Gemini AI streaming — **zero emulators, zero mocks, zero simulations**.
+This document describes how end-to-end testing was set up for the EduForge-GenUI platform — a BKT-powered adaptive learning system. The goal was to run **everything real**: real GCP infrastructure, real Firebase Auth, real Firestore persistence, real Gemini AI — **zero emulators, zero mocks, zero simulations**.
 
-**Final Result: 19/19 E2E tests passing against live GCP services.**
+**Final Result: All E2E tests passing against live GCP services.**
 
 ---
 
@@ -12,13 +12,12 @@ This document describes how end-to-end testing was set up for the EduForge-GenUI
 
 1. [Design Decision: Why Real Services?](#1-design-decision-why-real-services)
 2. [GCP Infrastructure Provisioned](#2-gcp-infrastructure-provisioned)
-3. [Claude → Gemini Migration](#3-claude--gemini-migration)
-4. [Service Architecture](#4-service-architecture)
-5. [Authentication Strategy](#5-authentication-strategy)
-6. [E2E Test Suite Design](#6-e2e-test-suite-design)
-7. [How to Run](#7-how-to-run)
-8. [Issues Encountered & Fixes](#8-issues-encountered--fixes)
-9. [Tools & Technologies Used](#9-tools--technologies-used)
+3. [Service Architecture](#3-service-architecture)
+4. [Authentication Strategy](#4-authentication-strategy)
+5. [E2E Test Suite Design](#5-e2e-test-suite-design)
+6. [How to Run](#6-how-to-run)
+7. [Issues Encountered & Fixes](#7-issues-encountered--fixes)
+8. [Tools & Technologies Used](#8-tools--technologies-used)
 
 ---
 
@@ -27,7 +26,7 @@ This document describes how end-to-end testing was set up for the EduForge-GenUI
 Initially, the plan was to use **Firebase Emulators** (Firestore on :9090, Auth on :9099) for local E2E testing. The emulators were set up and running. However, the decision was made to:
 
 - **Use all real GCP resources** — no emulators, no mocked services
-- **Replace Claude (Anthropic) with Gemini** — use Google for everything, no external API keys
+- **Use Google Gemini for all AI** — single provider, no external API keys
 - **Provision everything via `gcloud` CLI** — reproducible, scriptable infrastructure
 
 This approach ensures the E2E tests validate the exact same code paths that will run in production.
@@ -66,12 +65,6 @@ Firebase Auth email/password could **not** be enabled via standard `gcloud` comm
 4. Second call: `PATCH /admin/v2/projects/{project}/config?updateMask=signIn.email` to enable email/password
 5. Required the `x-goog-user-project` header to avoid quota project 403 errors
 
-```
-# The key discovery: Identity Platform must be initialized before config can be patched
-POST https://identitytoolkit.googleapis.com/v2/projects/{project}/identityPlatform:initializeAuth
-PATCH https://identitytoolkit.googleapis.com/admin/v2/projects/{project}/config?updateMask=signIn.email
-```
-
 ### 2.3 Environment Configuration
 
 All credentials stored in `.env.local` (gitignored):
@@ -88,63 +81,17 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=eduforge-genui-2026
 
 ---
 
-## 3. Claude → Gemini Migration
+## 3. Service Architecture
 
-The GenUI service originally used **Claude (Anthropic)** for AI-powered visualization generation. It was fully migrated to **Google Gemini**.
-
-### What Changed
-
-| File | Before | After |
-|------|--------|-------|
-| `apps/genui-service/src/genui/streamer.py` | `import anthropic` / `client.messages.stream()` | `import google.generativeai as genai` / `model.generate_content(stream=True)` |
-| `apps/genui-service/requirements.txt` | `anthropic==0.42.0` | `google-generativeai==0.8.5` |
-| `apps/genui-service/tests/test_genui.py` | `patch.dict("sys.modules", {"anthropic": MagicMock()})` | `patch.dict("sys.modules", {"google.generativeai": MagicMock(), "google.generativeai.types": MagicMock()})` |
-| All 4 model references | `gemini-2.0-flash` | `gemini-2.5-flash` |
-
-### Key Differences in API Pattern
-
-**Claude (before):**
-```python
-client = anthropic.Anthropic(api_key=os.environ.get("CLAUDE_API_KEY"))
-with client.messages.stream(
-    model="claude-sonnet-4-6",
-    system=system_prompt,
-    messages=[{"role": "user", "content": user_message}],
-) as stream:
-    for text in stream.text_stream:
-        yield text
-```
-
-**Gemini (after):**
-```python
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-2.5-flash")
-response = model.generate_content(
-    [system_prompt + "\n\n" + user_message],
-    generation_config=genai.types.GenerationConfig(max_output_tokens=2000),
-    stream=True,
-)
-for chunk in response:
-    if chunk.text:
-        yield chunk.text
-```
-
-### Model Deprecation Issue
-
-`gemini-2.0-flash` was listed in available models but returned **404** at runtime: *"This model is no longer available to new users."* All references were updated to `gemini-2.5-flash`.
-
----
-
-## 4. Service Architecture
-
-Four microservices, all Python/FastAPI, sharing a single venv at `apps/bkt-service/.venv`:
+Three backend microservices (Python/FastAPI) + one Next.js frontend:
 
 | Service | Port | Purpose | Auth | Key Dependencies |
 |---------|------|---------|------|------------------|
 | **BKT Service** | 8001 | Bayesian Knowledge Tracing engine | None (internal) | numpy, google-cloud-firestore |
 | **API Gateway** | 8000 | Central API, auth middleware, BKT proxy | Firebase JWT | firebase-admin, google-cloud-firestore, google-cloud-storage |
-| **GenUI Service** | 8002 | AI visualization streaming via Gemini | None (internal) | google-generativeai |
 | **Ingestion Service** | 8003 | PPTX → topic hierarchy → MCQs → BKT params | None (internal) | python-pptx, google-generativeai, google-cloud-storage |
+
+> **GenUI** is handled directly by the Next.js frontend via the `/api/genui` route using the Vercel AI SDK (`ai` + `@ai-sdk/google`). It calls Gemini 2.5 Flash directly — no separate Python service needed.
 
 ### Startup
 
@@ -162,7 +109,7 @@ cd apps/bkt-service && python -m uvicorn main:app --port 8001
 
 ---
 
-## 5. Authentication Strategy
+## 4. Authentication Strategy
 
 ### For E2E Tests
 
@@ -188,11 +135,11 @@ E2E Test → Firebase Auth REST API → gets real idToken
 
 ---
 
-## 6. E2E Test Suite Design
+## 5. E2E Test Suite Design
 
-The test suite (`scripts/e2e-test.py`) is organized in 5 phases that mirror a real user journey:
+The test suite (`scripts/e2e-test.py`) is organized in 4 phases that mirror a real user journey:
 
-### Phase 1: BKT Service (7 tests)
+### Phase 1: BKT Service (6 tests)
 Tests the BKT engine directly (no auth required — internal service):
 - Health check
 - Scaffold resolver at 3 mastery levels (0.15→L0, 0.55→L2, 0.85→L4)
@@ -212,14 +159,7 @@ Tests the BKT engine directly (no auth required — internal service):
 - `GET /lessons` with real Bearer token → verifies auth middleware works
 - `GET /bkt/scaffold` proxied through API gateway → verifies service-to-service communication
 
-### Phase 4: GenUI Streaming (4-5 tests)
-- Health check
-- **Visualization streaming**: Sends a Newton's First Law concept with novice-level BKT state → receives SSE stream from real Gemini 2.5 Flash
-- Content validation: Checks the response contains educational content
-- **Chat streaming**: Sends "I don't understand inertia" → receives real AI tutor response
-- Prints a sample of the tutor's response for manual verification
-
-### Phase 5: Ingestion Service (1 test)
+### Phase 4: Ingestion Service (1 test)
 - Health check (full ingestion pipeline testing requires a real PPTX upload → out of scope for this run)
 
 ### Test Output Format
@@ -237,7 +177,7 @@ Tests the BKT engine directly (no auth required — internal service):
 
 ---
 
-## 7. How to Run
+## 6. How to Run
 
 ### Prerequisites
 
@@ -255,6 +195,10 @@ Tests the BKT engine directly (no auth required — internal service):
 ### Step 1: Start All Services
 
 ```bash
+# Start all 3 backend services at once:
+bash scripts/start-all.sh
+
+# Or start individually:
 # Terminal 1 — BKT Service
 cd apps/bkt-service && set -a && source ../../.env.local && set +a && \
   export GOOGLE_APPLICATION_CREDENTIALS="$(cd ../.. && pwd)/.secrets/sa-key.json" && \
@@ -265,38 +209,28 @@ cd apps/api && set -a && source ../../.env.local && set +a && \
   export GOOGLE_APPLICATION_CREDENTIALS="$(cd ../.. && pwd)/.secrets/sa-key.json" && \
   ../../apps/bkt-service/.venv/Scripts/python.exe -m uvicorn main:app --port 8000
 
-# Terminal 3 — GenUI Service
-cd apps/genui-service && set -a && source ../../.env.local && set +a && \
-  export GOOGLE_APPLICATION_CREDENTIALS="$(cd ../.. && pwd)/.secrets/sa-key.json" && \
-  ../../apps/bkt-service/.venv/Scripts/python.exe -m uvicorn main:app --port 8002
-
-# Terminal 4 — Ingestion Service
+# Terminal 3 — Ingestion Service
 cd apps/ingestion && set -a && source ../../.env.local && set +a && \
   export GOOGLE_APPLICATION_CREDENTIALS="$(cd ../.. && pwd)/.secrets/sa-key.json" && \
   ../../apps/bkt-service/.venv/Scripts/python.exe -m uvicorn main:app --port 8003
 ```
 
-Or use the launcher script:
+### Step 2: Start Next.js (for GenUI)
+
 ```bash
-bash scripts/start-all.sh
+cd apps/web && pnpm dev
 ```
 
-### Step 2: Run E2E Tests
+### Step 3: Run E2E Tests
 
 ```bash
 set -a && source .env.local && set +a
 apps/bkt-service/.venv/Scripts/python.exe scripts/e2e-test.py
 ```
 
-### Expected Output
-
-```
-  ✓ Passed: 19/19
-```
-
 ---
 
-## 8. Issues Encountered & Fixes
+## 7. Issues Encountered & Fixes
 
 ### Issue 1: Firebase Auth Enablement via CLI
 
@@ -310,54 +244,42 @@ apps/bkt-service/.venv/Scripts/python.exe scripts/e2e-test.py
 
 **Fix:** Added the `x-goog-user-project: eduforge-genui-2026` header to all requests.
 
-### Issue 3: Identity Toolkit 404 — CONFIGURATION_NOT_FOUND
-
-**Problem:** Patching the config returned 404 because Identity Platform wasn't initialized yet.
-
-**Fix:** Added a preliminary `POST /identityPlatform:initializeAuth` call before patching the config.
-
-### Issue 4: Gemini Model Deprecated
+### Issue 3: Gemini Model Deprecated
 
 **Problem:** `gemini-2.0-flash` was listed in `genai.list_models()` but returned `404 This model is no longer available to new users` at runtime.
 
-**Fix:** Updated all 4 references across `genui-service` and `ingestion` to `gemini-2.5-flash`.
+**Fix:** Updated all references to `gemini-2.5-flash`.
 
-### Issue 5: Generative Language API Not Enabled
+### Issue 4: Generative Language API Not Enabled
 
 **Problem:** GenUI streaming returned `403 Generative Language API has not been used in project before or it is disabled`.
 
 **Fix:** `gcloud services enable generativelanguage.googleapis.com --project=eduforge-genui-2026`
 
-### Issue 6: Missing Python Packages
-
-**Problem:** `uvicorn`, `python-pptx`, and `tenacity` were not in the shared venv.
-
-**Fix:** Installed incrementally as services reported `ModuleNotFoundError` at startup:
-```bash
-pip install uvicorn[standard] python-pptx tenacity
-```
-
-### Issue 7: BKT State Persistence Across Runs
+### Issue 5: BKT State Persistence Across Runs
 
 **Problem:** Repeat E2E runs found pre-existing Firestore state at 0.999 mastery, making "mastery rising" assertions fail.
 
 **Fix:** Each test run generates a random `concept_id` (e.g., `e2e-concept-78432`) so state starts fresh.
 
-### Issue 8: `time_taken_seconds` Type Mismatch
+### Issue 6: `time_taken_seconds` Type Mismatch
 
 **Problem:** BKT update endpoint's Pydantic schema expects `int` but test sent `12.5` (float).
 
 **Fix:** Changed test payload to use integer `12`.
 
-### Issue 9: Escaping Hell — Git Bash + PowerShell
+### Issue 7: GenUI Migration from Python Service to Vercel AI SDK
 
-**Problem:** Running PowerShell commands from Git Bash required complex escaping for `$` variables, quotes, and JSON payloads. Git Bash strips `$` signs, PowerShell needs `\$`, and JSON needs escaped quotes.
+**Problem:** The original GenUI Python service (port 8002) used `google-generativeai` for streaming and custom SSE parsing. This was fragile — SSE frames with newlines caused "Failed to parse GenUI response" errors.
 
-**Fix:** Created standalone `.ps1` script files instead of inline PowerShell commands. Run via `powershell.exe -NoProfile -ExecutionPolicy Bypass -File script.ps1`.
+**Fix:** Removed the Python GenUI service entirely. GenUI now runs inside the Next.js app as an API route (`/api/genui`) using the Vercel AI SDK:
+- Server: `streamText` + `Output.object({ schema: genUISchema })` from `ai` + `@ai-sdk/google`
+- Client: `experimental_useObject` from `@ai-sdk/react` with Zod schema validation
+- No more custom SSE parsing, no more newline bugs
 
 ---
 
-## 9. Tools & Technologies Used
+## 8. Tools & Technologies Used
 
 ### Infrastructure & CLI
 
@@ -372,16 +294,27 @@ pip install uvicorn[standard] python-pptx tenacity
 
 | Technology | Purpose |
 |------------|---------|
-| **Python 3.14** | All 4 backend microservices |
+| **Python 3.14** | All 3 backend microservices |
 | **FastAPI** | HTTP framework for all services |
 | **uvicorn** | ASGI server |
-| **google-generativeai** | Gemini 2.5 Flash for GenUI streaming and ingestion pipeline |
+| **google-generativeai** | Gemini 2.5 Flash for ingestion pipeline (topic/MCQ generation) |
 | **google-cloud-firestore** | BKT state persistence, lesson/student data |
 | **google-cloud-storage** | GCS bucket operations for lesson uploads |
 | **google-cloud-pubsub** | Message queuing between services |
 | **firebase-admin** | JWT token verification in API gateway |
 | **numpy** | BKT probability calculations |
 | **pydantic** | Request/response validation |
+
+### Frontend & GenUI
+
+| Technology | Purpose |
+|------------|---------|
+| **Next.js 15** | React framework, SSR, API routes |
+| **Vercel AI SDK (`ai@6`)** | `streamText` + `Output.object` for structured Gemini output |
+| **@ai-sdk/google** | Gemini 2.5 Flash model provider |
+| **@ai-sdk/react** | `experimental_useObject` hook for streaming objects |
+| **Zod** | Schema definition for 8 GenUI component types (discriminated union) |
+| **Zustand** | State management (BKT store, session store, GenUI cache store) |
 
 ### GCP Services (Real)
 
@@ -391,7 +324,7 @@ pip install uvicorn[standard] python-pptx tenacity
 | **Cloud Storage** | 2 buckets (uploads + assets) with CORS for browser uploads |
 | **Firebase Authentication** | Email/password sign-up/sign-in, JWT tokens |
 | **Pub/Sub** | 3 topics for async ingestion pipeline |
-| **Gemini 2.5 Flash** | AI visualization generation + AI tutor chat + topic/MCQ/BKT generation |
+| **Gemini 2.5 Flash** | AI visualization generation (via Vercel AI SDK) + topic/MCQ/BKT generation (via google-generativeai) |
 | **IAM** | Service account with 4 roles for local dev |
 
 ### Testing
@@ -400,26 +333,18 @@ pip install uvicorn[standard] python-pptx tenacity
 |------|---------|
 | **requests** (Python) | HTTP client for all E2E test calls |
 | **Firebase Auth REST API** | Programmatic user sign-up/sign-in to get real ID tokens |
-| **SSE parsing** | Manual `iter_lines()` parsing of `text/event-stream` responses |
-| **pytest** | Unit tests (53 total: BKT 18, API 8, GenUI 19, Ingestion 8) |
+| **pytest** | Unit tests for backend services |
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `scripts/e2e-test.py` | Full 19-test E2E suite |
-| `scripts/start-all.sh` | Launches all 4 services with env vars |
+| `scripts/e2e-test.py` | Full E2E test suite |
+| `scripts/start-all.sh` | Launches all 3 backend services with env vars |
 | `scripts/enable-auth.ps1` | Firebase Auth enablement via REST API |
 | `scripts/cors.json` | GCS CORS configuration |
+| `apps/web/src/app/api/genui/route.ts` | GenUI API route (Vercel AI SDK + Gemini) |
+| `apps/web/src/hooks/useGenUI.ts` | Client-side GenUI streaming hook |
+| `apps/web/src/lib/genui-schema.ts` | Zod schemas for 8 GenUI components |
 | `.env.local` | All real GCP credentials (gitignored) |
 | `.secrets/sa-key.json` | Service account key (gitignored) |
-
----
-
-## Appendix: Research References
-
-- **Firebase Auth REST API**: `https://identitytoolkit.googleapis.com/v1/accounts:signUp` — used instead of Firebase Client SDK for CLI-based testing
-- **Identity Toolkit Admin v2 API**: `https://identitytoolkit.googleapis.com/admin/v2/` — for enabling auth providers programmatically
-- **Google Generative AI Python SDK**: `google-generativeai` package (deprecated in favor of `google-genai`, but stable for current use)
-- **gcloud API Keys**: `gcloud services api-keys create --api-target=service=generativelanguage.googleapis.com` — for creating restricted API keys
-- **Gemini Model Listing**: `genai.list_models()` — for discovering available models after deprecation
