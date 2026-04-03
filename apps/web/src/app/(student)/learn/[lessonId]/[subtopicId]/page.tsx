@@ -39,7 +39,8 @@ export default function SubtopicLearnPage() {
         if (!subtopic || !subtopicId) return;
         // Use first keyConcept, fall back to subtopic title as conceptId
         const conceptId = subtopic?.keyConcepts?.[0] ?? subtopic.title;
-        generate(conceptId, subtopicId, lessonId);
+        // Pass the full subtopic title so the AI has proper domain context
+        generate(conceptId, subtopicId, lessonId, false, subtopic.title);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [subtopic, subtopicId, lessonId]);
 
@@ -66,7 +67,7 @@ export default function SubtopicLearnPage() {
                         result.scaffold_level,
                         result.allowed_components
                     );
-                    generate(mcq.concept, subtopicId, lessonId, true); // forceRefresh=true
+                    generate(mcq.concept, subtopicId, lessonId, true, subtopic?.title); // forceRefresh=true
                 }
             } catch (err) {
                 console.error("BKT update failed:", err);
@@ -74,7 +75,7 @@ export default function SubtopicLearnPage() {
         },
         // generate is stable so safe to include; remove from eslint check
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [token, studentId, mcqs, currentMCQIdx, subtopicId, lessonId]
+        [token, studentId, mcqs, currentMCQIdx, subtopicId, lessonId, subtopic]
     );
 
     const nextQuestion = () => {
@@ -88,18 +89,44 @@ export default function SubtopicLearnPage() {
 
     return (
         <main className="max-w-7xl mx-auto px-6 py-8">
+            {/* Breadcrumb / back link */}
+            <div className="mb-4">
+                <Link
+                    href={`/learn/${lessonId}`}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                    ← Back to lesson
+                </Link>
+                {subtopic && (
+                    <h2 className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
+                        {subtopic.title}
+                    </h2>
+                )}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: GenUI Visualization */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                            AI Visualization
-                            {isStreaming && (
-                                <span className="ml-2 text-sm font-normal text-blue-500 animate-pulse">
-                                    Generating...
-                                </span>
+                        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                AI Visualization
+                                {isStreaming && (
+                                    <span className="ml-2 text-sm font-normal text-blue-500 animate-pulse">
+                                        Generating...
+                                    </span>
+                                )}
+                            </h3>
+                            {/* Link to saved visualizations */}
+                            {studentId && (
+                                <Link
+                                    href={`/learn/${lessonId}/${subtopicId}/visualizations`}
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    View saved visualizations →
+                                </Link>
                             )}
-                        </h3>
+                        </div>
                         {genUIError && (
                             <p className="text-sm text-red-500 dark:text-red-400 mb-3">
                                 Visualization unavailable: {genUIError}

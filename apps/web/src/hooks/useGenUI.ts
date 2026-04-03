@@ -4,6 +4,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { useGenUIStore } from "@/stores/genUIStore";
 import { genUISchema } from "@/lib/genui-schema";
+import { db } from "@/lib/firebase";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 
 interface GenUIComponent {
     component: string;
@@ -25,20 +27,61 @@ export function useGenUI(studentId: string) {
         onFinish({ object: result }) {
             if (result?.components && lastRequestRef.current) {
                 const { subtopicId, conceptId } = lastRequestRef.current;
-                setCache(subtopicId, conceptId, result.components as GenUIComponent[]);
+                const components = result.components as GenUIComponent[];
+                // Save to in-memory Zustand cache
+                setCache(subtopicId, conceptId, components);
+                // Persist to Firestore for cross-session recall (fire-and-forget)
+                const sid = studentIdRef.current;
+                if (sid) {
+                    const docRef = doc(db, "genui_cache", sid, "subtopics", subtopicId);
+                    setDoc(docRef, {
+                        components,
+                        conceptId,
+                        updatedAt: serverTimestamp(),
+                    }).catch(() => {/* ignore persistence errors */});
+                }
             }
         },
     });
 
     const generate = useCallback(
-        (conceptId: string, subtopicId: string, lessonId: string, forceRefresh = false) => {
-            // Serve from cache if available and not a forced refresh
+        async (
+            conceptId: string,
+            subtopicId: string,
+            lessonId: string,
+            forceRefresh = false,
+            subtopicTitle?: string,
+        ) => {
+            // 1. Try Zustand in-memory cache first
             if (!forceRefresh) {
                 const cached = getCache(subtopicId, conceptId);
                 if (cached) {
                     setCachedComponents(cached);
                     setServingFromCache(true);
                     return;
+                }
+            }
+
+            // 2. Try Firestore persistence cache (only for non-forced refreshes)
+            if (!forceRefresh && studentIdRef.current) {
+                try {
+                    const docRef = doc(db, "genui_cache", studentIdRef.current, "subtopics", subtopicId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        if (
+                            data?.components?.length > 0 &&
+                            data.conceptId === conceptId
+                        ) {
+                            const components = data.components as GenUIComponent[];
+                            setCache(subtopicId, conceptId, components);
+                            setCachedComponents(components);
+                            setServingFromCache(true);
+                            return;
+                        }
+                    }
+                } catch {
+                    // Firestore unavailable — fall through to generation
                 }
             }
 
@@ -51,6 +94,7 @@ export function useGenUI(studentId: string) {
                 subtopicId,
                 lessonId,
                 studentId: studentIdRef.current,
+                subtopicTitle: subtopicTitle ?? conceptId,
             });
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps

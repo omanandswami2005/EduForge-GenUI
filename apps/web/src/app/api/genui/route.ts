@@ -30,7 +30,7 @@ export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
     try {
-        const { conceptId, subtopicId, lessonId, studentId } = await req.json();
+        const { conceptId, subtopicId, lessonId, studentId, subtopicTitle } = await req.json();
 
         if (!conceptId || !studentId) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -60,13 +60,20 @@ export async function POST(req: NextRequest) {
             // Use default scaffold
         }
 
-        // 3. Build prompt and stream structured output via Vercel AI SDK
+        // 3. Build a rich concept name from all available context clues.
+        //    subtopicTitle is the full human-readable topic name (e.g. "Agent Development Kit (ADK)")
+        //    which grounds the AI in the correct domain and avoids misinterpretation.
+        const richConceptName = subtopicTitle
+            ? `${subtopicTitle}${conceptId !== subtopicTitle ? ` — specifically: ${conceptId}` : ""}`
+            : `${conceptId} (subtopic ${subtopicId}, lesson ${lessonId})`;
+
+        // 4. Build prompt and stream structured output via Vercel AI SDK
         const allowed = scaffold.allowed_components ?? ALLOWED_MAP[scaffold.level] ?? ALLOWED_MAP[0];
         const prompt = buildGenUIPrompt({
             scaffoldLevel: scaffold.level,
             pMastery: scaffold.p_mastery ?? 0.2,
             allowed,
-            conceptName: `${conceptId} (subtopic ${subtopicId}, lesson ${lessonId})`,
+            conceptName: richConceptName,
         });
 
         // Use restricted schema so Gemini can only produce allowed component types
