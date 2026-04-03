@@ -14,8 +14,8 @@ export function MasteryHUD({
     const bktStates = useBKTState(studentId, lessonId);
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Concept Mastery</h3>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Concept Mastery</h3>
             <div className="space-y-2">
                 {concepts.map((c) => {
                     const normalized = c.id.toLowerCase().replace(/\s+/g, "_");
@@ -28,10 +28,10 @@ export function MasteryHUD({
 
                     return (
                         <div key={c.id} className="flex items-center gap-2">
-                            <span className="text-xs text-gray-600 w-28 truncate" title={c.label}>
+                            <span className="text-xs text-gray-600 dark:text-gray-300 w-28 truncate" title={c.label}>
                                 {c.label}
                             </span>
-                            <div className="flex-1 bg-gray-100 rounded-full h-2">
+                            <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2">
                                 <div
                                     className={`h-2 rounded-full transition-all duration-500 ${state?.mastered
                                         ? "bg-green-500"
@@ -44,14 +44,14 @@ export function MasteryHUD({
                                     style={{ width: `${pct}%` }}
                                 />
                             </div>
-                            <span className="text-xs text-gray-500 w-8 text-right">{pct}%</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 w-8 text-right">{pct}%</span>
                         </div>
                     );
                 })}
             </div>
 
             {concepts.length === 0 && (
-                <p className="text-sm text-gray-400">No concepts loaded yet.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">No concepts loaded yet.</p>
             )}
         </div>
     );

@@ -51,12 +51,12 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
     const optionColor = (option: string) => {
         if (!revealed) {
             return selected === option
-                ? "border-blue-500 bg-blue-50 text-blue-900"
-                : "border-gray-200 hover:border-gray-400 cursor-pointer";
+                ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-100"
+                : "border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-400 cursor-pointer";
         }
-        if (option === question.correct_answer) return "border-green-500 bg-green-50 text-green-900";
-        if (option === selected) return "border-red-400 bg-red-50 text-red-700";
-        return "border-gray-200 text-gray-500";
+        if (option === question.correct_answer) return "border-green-500 bg-green-50 dark:bg-green-950 text-green-900 dark:text-green-100";
+        if (option === selected) return "border-red-400 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300";
+        return "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500";
     };
 
     return (
@@ -64,18 +64,18 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
             <div className="flex items-center gap-2">
                 <span
                     className={`text-xs px-2 py-0.5 rounded-full font-medium ${question.tier === 1
-                        ? "bg-blue-100 text-blue-700"
+                        ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
                         : question.tier === 2
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-orange-100 text-orange-700"
+                            ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300"
+                            : "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300"
                         }`}
                 >
                     {question.tier === 1 ? "Foundation" : question.tier === 2 ? "Understanding" : "Analysis"}
                 </span>
-                <span className="text-xs text-gray-500">Testing: {question.concept}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Testing: {question.concept}</span>
             </div>
 
-            <h3 className="text-base font-medium text-gray-900 leading-relaxed">{question.question}</h3>
+            <h3 className="text-base font-medium text-gray-900 dark:text-white leading-relaxed">{question.question}</h3>
 
             <div className="space-y-2">
                 {(Object.entries(question.options) as ["A" | "B" | "C" | "D", string][]).map(
@@ -100,38 +100,38 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={`p-4 rounded-lg ${selected === question.correct_answer
-                            ? "bg-green-50 border border-green-200"
-                            : "bg-red-50 border border-red-200"
+                            ? "bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800"
+                            : "bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800"
                             }`}
                     >
                         {selected === question.correct_answer ? (
                             <div>
-                                <p className="font-medium text-green-800">Correct!</p>
-                                <p className="text-sm text-green-700 mt-1">{question.explanation}</p>
+                                <p className="font-medium text-green-800 dark:text-green-300">Correct!</p>
+                                <p className="text-sm text-green-700 dark:text-green-400 mt-1">{question.explanation}</p>
                             </div>
                         ) : (
                             <div>
-                                <p className="font-medium text-red-800">
+                                <p className="font-medium text-red-800 dark:text-red-300">
                                     Not quite — the correct answer is {question.correct_answer}
                                 </p>
                                 {selected && question.misconceptions[selected] && (
-                                    <p className="text-sm text-red-700 mt-1">{question.misconceptions[selected]}</p>
+                                    <p className="text-sm text-red-700 dark:text-red-400 mt-1">{question.misconceptions[selected]}</p>
                                 )}
-                                <p className="text-sm text-gray-700 mt-2">{question.explanation}</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">{question.explanation}</p>
                             </div>
                         )}
 
                         {bktUpdateResult && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-500">Mastery</span>
-                                    <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Mastery</span>
+                                    <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                                         <div
                                             className="bg-blue-500 h-1.5 rounded-full transition-all duration-700"
                                             style={{ width: `${bktUpdateResult.p_mastery_after * 100}%` }}
                                         />
                                     </div>
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">
                                         {Math.round(bktUpdateResult.p_mastery_after * 100)}%
                                     </span>
                                 </div>
@@ -139,9 +139,9 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
                         )}
 
                         {bktUpdateResult?.misconception && (
-                            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <p className="text-sm font-medium text-amber-800">Let&apos;s clarify this misconception</p>
-                                <p className="text-sm text-amber-700 mt-1">{bktUpdateResult.misconception.explanation}</p>
+                            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Let&apos;s clarify this misconception</p>
+                                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">{bktUpdateResult.misconception.explanation}</p>
                             </div>
                         )}
                     </motion.div>

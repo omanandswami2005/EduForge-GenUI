@@ -85,8 +85,8 @@ export default function SubtopicLearnPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: GenUI Visualization */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                             AI Visualization
                             {isStreaming && (
                                 <span className="ml-2 text-sm font-normal text-blue-500 animate-pulse">
@@ -99,9 +99,9 @@ export default function SubtopicLearnPage() {
 
                     {/* MCQ Section */}
                     {currentMCQ && (
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                                     Question {currentMCQIdx + 1} of {mcqs.length}
                                 </h3>
                             </div>

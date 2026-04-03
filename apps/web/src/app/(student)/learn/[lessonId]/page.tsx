@@ -37,8 +37,8 @@ export default function LessonLearnPage() {
 
     return (
         <main className="max-w-4xl mx-auto px-6 py-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{lesson?.title}</h2>
-            <p className="text-gray-500 mb-8">{lesson?.subject}</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{lesson?.title}</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">{lesson?.subject}</p>
 
             <div className="space-y-4">
                 {subtopics.map((st: any, idx: number) => {
@@ -49,18 +49,18 @@ export default function LessonLearnPage() {
                         <Link
                             key={st.id || idx}
                             href={`/learn/${lessonId}/${st.id}`}
-                            className="block bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow"
+                            className="block bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5 hover:shadow-md transition-shadow"
                         >
                             <div className="flex items-center justify-between mb-3">
                                 <div>
-                                    <h3 className="font-semibold text-gray-900">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white">
                                         {idx + 1}. {st.title}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">{st.description}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{st.description}</p>
                                 </div>
-                                <span className="text-sm font-medium text-gray-600">{masteryPct}%</span>
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{masteryPct}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                 <div
                                     className={`h-2 rounded-full transition-all duration-500 ${mastery >= 0.8
                                         ? "bg-green-500"
