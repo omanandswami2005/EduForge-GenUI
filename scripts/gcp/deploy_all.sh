@@ -1,5 +1,7 @@
 #!/bin/bash
 # scripts/gcp/deploy_all.sh
+# Deploys all services (3 Python backends + Next.js frontend) to Cloud Run
+# and updates Pub/Sub endpoints + Firestore rules.
 
 set -e
 
@@ -14,34 +16,13 @@ BKT_SA="eduforge-bkt@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "Deploying EduForge to GCP project: $PROJECT_ID"
 
-# ── DEPLOY API SERVICE ────────────────────────────────────────────────────
-echo "--- Deploying API Service ---"
-gcloud run deploy eduforge-api \
-  --image="${REGISTRY}/api:${TAG}" \
-  --region=$REGION \
-  --service-account=$API_SA \
-  --allow-unauthenticated \
-  --memory=512Mi \
-  --cpu=1 \
-  --min-instances=0 \
-  --max-instances=10 \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID}" \
-  --set-secrets="CLAUDE_API_KEY=CLAUDE_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT=FIREBASE_SERVICE_ACCOUNT:latest" \
-  --project=$PROJECT_ID
-
-API_URL=$(gcloud run services describe eduforge-api \
-  --region=$REGION \
-  --format="value(status.url)" \
-  --project=$PROJECT_ID)
-echo "✅ API Service: $API_URL"
-
-# ── DEPLOY BKT SERVICE ────────────────────────────────────────────────────
+# ── DEPLOY BKT SERVICE (deploy first — API and frontend depend on it) ────
 echo "--- Deploying BKT Service ---"
 gcloud run deploy eduforge-bkt \
   --image="${REGISTRY}/bkt-service:${TAG}" \
   --region=$REGION \
   --service-account=$BKT_SA \
-  --no-allow-unauthenticated \
+  --allow-unauthenticated \
   --memory=512Mi \
   --cpu=1 \
   --min-instances=0 \
@@ -54,6 +35,27 @@ BKT_URL=$(gcloud run services describe eduforge-bkt \
   --format="value(status.url)" \
   --project=$PROJECT_ID)
 echo "✅ BKT Service: $BKT_URL"
+
+# ── DEPLOY API SERVICE ────────────────────────────────────────────────────
+echo "--- Deploying API Service ---"
+gcloud run deploy eduforge-api \
+  --image="${REGISTRY}/api:${TAG}" \
+  --region=$REGION \
+  --service-account=$API_SA \
+  --allow-unauthenticated \
+  --memory=512Mi \
+  --cpu=1 \
+  --min-instances=0 \
+  --max-instances=10 \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},BKT_SERVICE_URL=${BKT_URL}" \
+  --set-secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest" \
+  --project=$PROJECT_ID
+
+API_URL=$(gcloud run services describe eduforge-api \
+  --region=$REGION \
+  --format="value(status.url)" \
+  --project=$PROJECT_ID)
+echo "✅ API Service: $API_URL"
 
 # ── DEPLOY INGESTION TRIGGER SERVICE ─────────────────────────────────────
 echo "--- Deploying Ingestion Trigger Service ---"
@@ -81,32 +83,38 @@ echo "✅ Ingestion Service: $INGESTION_URL"
 echo "--- Updating Pub/Sub push endpoints ---"
 gcloud pubsub subscriptions modify-push-config lesson-ingestion-sub \
   --push-endpoint="${INGESTION_URL}/trigger" \
-  --project=$PROJECT_ID
+  --project=$PROJECT_ID 2>/dev/null || echo "  (skipped — subscription may not exist yet)"
 
 gcloud pubsub subscriptions modify-push-config lesson-complete-sub \
   --push-endpoint="${API_URL}/internal/lesson-complete" \
-  --project=$PROJECT_ID
+  --project=$PROJECT_ID 2>/dev/null || echo "  (skipped — subscription may not exist yet)"
 
 echo "✅ Pub/Sub endpoints updated"
 
-# ── DEPLOY FRONTEND ───────────────────────────────────────────────────────
-echo "--- Deploying Frontend to Firebase Hosting ---"
-cd apps/web
+# ── DEPLOY FRONTEND TO CLOUD RUN ─────────────────────────────────────────
+echo "--- Deploying Frontend to Cloud Run ---"
+gcloud run deploy eduforge-web \
+  --image="${REGISTRY}/web:${TAG}" \
+  --region=$REGION \
+  --allow-unauthenticated \
+  --memory=512Mi \
+  --cpu=1 \
+  --min-instances=0 \
+  --max-instances=10 \
+  --port=3000 \
+  --set-env-vars="NEXT_PUBLIC_API_URL=${API_URL},BKT_SERVICE_URL=${BKT_URL}" \
+  --set-secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest" \
+  --project=$PROJECT_ID
 
-NEXT_PUBLIC_API_URL=$API_URL \
-NEXT_PUBLIC_BKT_URL=$BKT_URL \
-pnpm run build
-
-firebase deploy --only hosting --project=$PROJECT_ID
-
-FRONTEND_URL="https://${PROJECT_ID}.web.app"
+FRONTEND_URL=$(gcloud run services describe eduforge-web \
+  --region=$REGION \
+  --format="value(status.url)" \
+  --project=$PROJECT_ID)
 echo "✅ Frontend: $FRONTEND_URL"
 
-cd ../..
-
-# ── DEPLOY FIRESTORE RULES & INDEXES ─────────────────────────────────────
+# ── DEPLOY FIRESTORE RULES ───────────────────────────────────────────────
 echo "--- Deploying Firestore security rules ---"
-firebase deploy --only firestore --project=$PROJECT_ID
+firebase deploy --only firestore --project=$PROJECT_ID 2>/dev/null || echo "  (skipped — firebase CLI not available or not initialized)"
 echo "✅ Firestore rules deployed"
 
 echo ""

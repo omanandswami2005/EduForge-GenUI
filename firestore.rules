@@ -70,5 +70,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isStudent();
     }
+
+    // GenUI cache — students can read/write their own cached visualizations
+    match /genui_cache/{studentId}/{document=**} {
+      allow read, write: if request.auth.uid == studentId;
+    }
   }
 }
