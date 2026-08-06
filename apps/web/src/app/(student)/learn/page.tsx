@@ -37,11 +37,11 @@ export default function StudentLearnPage() {
     };
 
     return (
-        <main className="max-w-4xl mx-auto px-6 py-8">
+        <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">My Lessons</h2>
 
             {/* Enroll */}
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6 flex gap-3">
+            <div className="max-w-2xl bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6 flex gap-3">
                 <input
                     type="text"
                     placeholder="Enter lesson ID to enroll..."
@@ -69,7 +69,7 @@ export default function StudentLearnPage() {
                     No enrolled lessons. Enter a lesson ID above to get started.
                 </div>
             ) : (
-                <div className="grid gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {lessons.map((lesson: any) => (
                         <Link
                             key={lesson.id}

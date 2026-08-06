@@ -24,21 +24,23 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
     return (
         <div className="min-h-dvh bg-gray-50 dark:bg-gray-950">
-            <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                    <Link href="/learn" className="text-xl font-bold text-gray-900 dark:text-white">
+            <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 flex items-center justify-between flex-wrap gap-x-6 gap-y-2">
+                <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+                    <Link href="/learn" className="text-xl font-bold text-gray-900 dark:text-white shrink-0">
                         Edu<span className="text-blue-600 dark:text-blue-400">Forge</span>
                     </Link>
-                    <Link href="/learn" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                    <Link href="/learn" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white whitespace-nowrap">
                         My Lessons
                     </Link>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 shrink-0">
                     <ThemeToggle />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{user.email}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[9rem] sm:max-w-none" title={user.email ?? undefined}>
+                        {user.email}
+                    </span>
                     <button
                         onClick={() => useSessionStore.getState().logout().then(() => router.push("/login"))}
-                        className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                        className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 whitespace-nowrap"
                     >
                         Sign Out
                     </button>

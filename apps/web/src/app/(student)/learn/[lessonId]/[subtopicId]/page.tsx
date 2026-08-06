@@ -10,6 +10,8 @@ import { api } from "@/lib/api";
 import { AdaptiveMCQ } from "@/components/student/AdaptiveMCQ";
 import { MasteryHUD } from "@/components/student/MasteryHUD";
 import { GenUIRenderer } from "@/components/genui/GenUIRenderer";
+import { GenUIMetaBadge } from "@/components/genui/GenUIMetaBadge";
+import { ScaffoldComparisonView } from "@/components/genui/ScaffoldComparisonView";
 
 export default function SubtopicLearnPage() {
     const { lessonId, subtopicId } = useParams<{ lessonId: string; subtopicId: string }>();
@@ -20,7 +22,7 @@ export default function SubtopicLearnPage() {
     const [subtopic, setSubtopic] = useState<any>(null);
 
     const studentId = user?.uid || "";
-    const { components, isStreaming, error: genUIError, generate } = useGenUI(studentId);
+    const { components, isStreaming, error: genUIError, generate, meta } = useGenUI(studentId);
 
     useEffect(() => {
         if (!loading && token && lessonId && subtopicId) {
@@ -88,7 +90,7 @@ export default function SubtopicLearnPage() {
     const currentMCQ = mcqs[currentMCQIdx];
 
     return (
-        <main className="max-w-7xl mx-auto px-6 py-8">
+        <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Breadcrumb / back link */}
             <div className="mb-4">
                 <Link
@@ -127,6 +129,7 @@ export default function SubtopicLearnPage() {
                                 </Link>
                             )}
                         </div>
+                        <GenUIMetaBadge meta={meta} />
                         {genUIError && (
                             <p className="text-sm text-red-500 dark:text-red-400 mb-3">
                                 Visualization unavailable: {genUIError}
@@ -134,6 +137,16 @@ export default function SubtopicLearnPage() {
                         )}
                         <GenUIRenderer components={components} />
                     </div>
+
+                    {subtopic && studentId && (
+                        <ScaffoldComparisonView
+                            studentId={studentId}
+                            conceptId={subtopic?.keyConcepts?.[0] ?? subtopic.title}
+                            subtopicId={subtopicId}
+                            lessonId={lessonId}
+                            subtopicTitle={subtopic.title}
+                        />
+                    )}
 
                     {/* MCQ Section */}
                     {currentMCQ && (
@@ -171,8 +184,10 @@ export default function SubtopicLearnPage() {
                     )}
                 </div>
 
-                {/* Right: Mastery HUD */}
-                <div>
+                {/* Right: Mastery HUD — sticky so it stays useful while the (much
+                    taller) left column scrolls, instead of scrolling away and
+                    leaving the sidebar empty. */}
+                <div className="lg:sticky lg:top-6 lg:self-start">
                     <MasteryHUD
                         studentId={studentId}
                         lessonId={lessonId}

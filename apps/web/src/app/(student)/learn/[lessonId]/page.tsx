@@ -36,11 +36,13 @@ export default function LessonLearnPage() {
     };
 
     return (
-        <main className="max-w-4xl mx-auto px-6 py-8">
+        <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{lesson?.title}</h2>
             <p className="text-gray-500 dark:text-gray-400 mb-8">{lesson?.subject}</p>
 
-            <div className="space-y-4">
+            {/* 2-up on wide screens — reading order (1,2 / 3,4 / ...) still tracks the
+                curriculum sequence since subtopics are numbered explicitly below. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {subtopics.map((st: any, idx: number) => {
                     const mastery = getSubtopicMastery(st);
                     const masteryPct = Math.round(mastery * 100);

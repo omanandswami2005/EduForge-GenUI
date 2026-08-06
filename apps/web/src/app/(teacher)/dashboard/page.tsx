@@ -38,7 +38,7 @@ export default function TeacherDashboard() {
     };
 
     return (
-        <main className="max-w-6xl mx-auto px-6 py-8">
+        <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center justify-between mb-8">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">My Lessons</h2>
                 <Link
@@ -59,19 +59,19 @@ export default function TeacherDashboard() {
                     </Link>
                 </div>
             ) : (
-                <div className="grid gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {lessons.map((lesson) => (
                         <Link
                             key={lesson.id}
                             href={`/lessons/${lesson.id}`}
                             className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-shadow"
                         >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{lesson.title}</h3>
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{lesson.title}</h3>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">{lesson.subject}</p>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor(lesson.status)}`}>
+                                <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium ${statusColor(lesson.status)}`}>
                                     {lesson.status}
                                 </span>
                             </div>
