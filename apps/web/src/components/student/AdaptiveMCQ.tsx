@@ -16,7 +16,7 @@ interface MCQ {
 
 interface AdaptiveMCQProps {
     question: MCQ;
-    onAnswer: (answer: string, isCorrect: boolean, timeTaken: number) => Promise<void>;
+    onAnswer: (answer: string, isCorrect: boolean, timeTaken: number, misconceptionText?: string) => Promise<void>;
     bktUpdateResult?: {
         p_mastery_before: number;
         p_mastery_after: number;
@@ -141,8 +141,12 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
         const originalKey = displayToOriginal[displayLetter] ?? displayLetter;
         const isCorrect = originalKey === question.correct_answer;
         const timeTaken = Math.round((Date.now() - startTime) / 1000);
+        // The specific misconception authored for whichever wrong option was
+        // picked — feeds both the teacher-facing insights and, when the next
+        // GenUI card is generated, gets addressed directly in the prompt.
+        const misconceptionText = !isCorrect ? question.misconceptions?.[originalKey] : undefined;
         try {
-            await onAnswer(originalKey, isCorrect, timeTaken);
+            await onAnswer(originalKey, isCorrect, timeTaken, misconceptionText);
             setRevealed(true);
         } catch (err) {
             console.error("Failed to record answer:", err);

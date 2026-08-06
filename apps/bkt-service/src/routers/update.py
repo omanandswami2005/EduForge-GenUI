@@ -20,6 +20,11 @@ class MCQAnswerRequest(BaseModel):
     selected_answer: str
     is_correct: bool
     time_taken_seconds: int = 0
+    # The specific misconception text authored for the wrong option the
+    # student picked — distinct from MisconceptionDetector's generic
+    # 3-strikes pattern below; this is per-question, immediate, and is what
+    # feeds both the teacher-facing insights and the next GenUI generation.
+    misconception_text: str | None = None
 
 
 class BKTUpdateResponse(BaseModel):
@@ -94,6 +99,7 @@ async def update_bkt_state(request: MCQAnswerRequest):
         "pMasteryAfter": new_state.p_mastery,
         "scaffoldLevel": scaffold.level,
         "timeTakenSeconds": request.time_taken_seconds,
+        "misconceptionText": request.misconception_text,
     })
 
     logger.info(

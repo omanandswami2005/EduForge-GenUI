@@ -14,3 +14,13 @@ async def get_class_analytics(
     """Get class-level BKT aggregates for a lesson (teacher only)."""
     fs = FirestoreService()
     return await fs.get_class_analytics(lesson_id)
+
+
+@router.get("/misconceptions/{lesson_id}")
+async def get_misconception_insights(
+    lesson_id: str,
+    token: dict = Depends(verify_firebase_token),
+):
+    """Top misconceptions per concept for a lesson, ranked by frequency (teacher only)."""
+    fs = FirestoreService()
+    return await fs.get_misconception_insights(lesson_id)

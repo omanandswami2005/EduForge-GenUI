@@ -79,4 +79,7 @@ export const api = {
     // Analytics
     getClassAnalytics: (token: string, lessonId: string) =>
         apiFetch<any>(`/analytics/class/${lessonId}`, { token }),
+
+    getMisconceptionInsights: (token: string, lessonId: string) =>
+        apiFetch<any>(`/analytics/misconceptions/${lessonId}`, { token }),
 };

@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useSessionStore } from "@/stores/sessionStore";
 import { api } from "@/lib/api";
 import { ClassMasteryHeatmap } from "@/components/teacher/ClassMasteryHeatmap";
+import { MisconceptionInsights } from "@/components/teacher/MisconceptionInsights";
 
 export default function LessonDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -123,10 +124,11 @@ export default function LessonDetailPage() {
                 )}
             </div>
 
-            {/* Class mastery heatmap */}
+            {/* Class mastery heatmap + misconception insights */}
             {lesson.status === "published" && token && (
-                <div className="mb-6">
+                <div className="mb-6 space-y-6">
                     <ClassMasteryHeatmap token={token} lessonId={id} />
+                    <MisconceptionInsights token={token} lessonId={id} />
                 </div>
             )}
 

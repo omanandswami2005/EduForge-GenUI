@@ -132,3 +132,48 @@ class FirestoreService:
             "concepts": concept_order,
             "matrix": matrix,
         }
+
+    async def get_misconception_insights(self, lesson_id: str, top_n: int = 5) -> dict:
+        """
+        Aggregates wrong-answer responses by (concept, misconception text) so
+        a teacher can see *what specifically* students are getting wrong, not
+        just that a concept's average mastery is low. This is the content-
+        difficulty signal a mastery-only view can't show: two concepts can
+        have identical average mastery for very different reasons.
+        """
+        responses_query = self.db.collection("responses").where("lessonId", "==", lesson_id)
+        counts: dict[str, dict[str, int]] = {}
+        wrong_total = 0
+        responses_total = 0
+
+        async for doc in responses_query.stream():
+            data = doc.to_dict()
+            responses_total += 1
+            if data.get("isCorrect"):
+                continue
+            wrong_total += 1
+            misconception = data.get("misconceptionText")
+            if not misconception:
+                continue
+            concept_id = data.get("conceptId", "unknown")
+            counts.setdefault(concept_id, {})
+            counts[concept_id][misconception] = counts[concept_id].get(misconception, 0) + 1
+
+        by_concept = []
+        for concept_id, misconception_counts in counts.items():
+            ranked = sorted(misconception_counts.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
+            by_concept.append({
+                "conceptId": concept_id,
+                "totalFlagged": sum(misconception_counts.values()),
+                "topMisconceptions": [
+                    {"text": text, "count": count} for text, count in ranked
+                ],
+            })
+        by_concept.sort(key=lambda c: c["totalFlagged"], reverse=True)
+
+        return {
+            "lessonId": lesson_id,
+            "responsesAnalyzed": responses_total,
+            "wrongAnswers": wrong_total,
+            "byConcept": by_concept,
+        }

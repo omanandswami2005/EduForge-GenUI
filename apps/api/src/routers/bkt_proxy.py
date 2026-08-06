@@ -19,6 +19,10 @@ class MCQAnswerRequest(BaseModel):
     selected_answer: str
     is_correct: bool
     time_taken_seconds: int = 0
+    # The specific misconception text authored for the wrong option the
+    # student picked (question.misconceptions[key] client-side) — None when
+    # correct or when the MCQ has no misconception text for that option.
+    misconception_text: str | None = None
 
 
 @router.post("/update")
