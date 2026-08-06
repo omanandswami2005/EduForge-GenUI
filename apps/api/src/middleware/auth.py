@@ -13,11 +13,17 @@ if not firebase_admin._apps:
     if sa_json:
         cred = credentials.Certificate(json.loads(sa_json))
         firebase_admin.initialize_app(cred)
+    elif os.environ.get("FIREBASE_AUTH_EMULATOR_HOST"):
+        # Emulator needs no real credentials — the Admin SDK routes verify_id_token
+        # calls to FIREBASE_AUTH_EMULATOR_HOST automatically once it's set.
+        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "demo-eduforge")
+        firebase_admin.initialize_app(options={"projectId": project_id})
     else:
         try:
             firebase_admin.initialize_app()
         except Exception:
-            # Local dev fallback — no auth verification
+            # No credentials and no emulator configured — auth calls below will
+            # raise until FIREBASE_AUTH_EMULATOR_HOST or a service account is set.
             pass
 
 security = HTTPBearer(auto_error=False)

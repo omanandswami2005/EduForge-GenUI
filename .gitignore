@@ -7,6 +7,7 @@ dist/
 .next/
 out/
 build/
+*.tsbuildinfo
 
 # Environment
 .env
@@ -36,6 +37,7 @@ Thumbs.db
 
 # Firebase
 .firebase/
+.firebase-emulator-data/
 
 # Secrets and Service Account Keys
 .secrets/sa-key.json

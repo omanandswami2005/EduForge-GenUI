@@ -5,6 +5,8 @@
 set -e
 
 echo "Starting EduForge local development environment..."
+echo "NOTE: run scripts/dev/start-emulators.sh in another terminal first —"
+echo "      the backend services need the Firebase Auth/Firestore emulators."
 
 # Copy environment template if .env.local doesn't exist
 if [ ! -f .env.local ]; then

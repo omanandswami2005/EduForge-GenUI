@@ -1,5 +1,13 @@
 version: "3.8"
 
+# Backend services connect to the Firebase Auth/Firestore emulators running on
+# the host (start them first: scripts/dev/start-emulators.sh). No real GCP
+# project or service account is used for local dev.
+x-emulator-env: &emulator-env
+  GOOGLE_CLOUD_PROJECT: ${PROJECT_ID:-demo-eduforge}
+  FIRESTORE_EMULATOR_HOST: host.docker.internal:9090
+  FIREBASE_AUTH_EMULATOR_HOST: host.docker.internal:9099
+
 services:
   web:
     build: ./apps/web
@@ -8,9 +16,13 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_BKT_URL=http://localhost:8001
+      - NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true
+      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${PROJECT_ID:-demo-eduforge}
       - BKT_SERVICE_URL=http://bkt-service:8080
       - API_SERVICE_URL=http://api:8080
     env_file: .env.local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - api
       - bkt-service
@@ -20,22 +32,28 @@ services:
     ports:
       - "8000:8080"
     environment:
-      - GOOGLE_CLOUD_PROJECT=${PROJECT_ID:-eduforge-genui-2026}
-      - BKT_SERVICE_URL=http://bkt-service:8080
+      <<: *emulator-env
+      BKT_SERVICE_URL: http://bkt-service:8080
     env_file: .env.local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   bkt-service:
     build: ./apps/bkt-service
     ports:
       - "8001:8080"
     environment:
-      - GOOGLE_CLOUD_PROJECT=${PROJECT_ID:-eduforge-genui-2026}
+      <<: *emulator-env
     env_file: .env.local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   ingestion:
     build: ./apps/ingestion
     ports:
       - "8003:8080"
     environment:
-      - GOOGLE_CLOUD_PROJECT=${PROJECT_ID:-eduforge-genui-2026}
+      <<: *emulator-env
     env_file: .env.local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
