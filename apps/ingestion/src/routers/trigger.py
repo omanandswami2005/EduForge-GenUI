@@ -28,9 +28,9 @@ async def trigger_ingestion(request: Request):
     then runs the full ingestion pipeline:
     1. Download PPTX from GCS
     2. Extract slides (text + images)
-    3. Generate topic hierarchy via Gemini
-    4. Generate MCQs per subtopic via Gemini
-    5. Generate BKT params per concept via Gemini
+    3. Generate topic hierarchy via Groq
+    4. Generate MCQs per subtopic via Groq
+    5. Generate BKT params per concept via Groq
     6. Save everything to Firestore
     7. Publish completion notification
     """

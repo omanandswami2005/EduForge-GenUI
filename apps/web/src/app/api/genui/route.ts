@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { streamText, Output } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { genUISchema, ALLOWED_MAP, buildGenUIPrompt } from "@/lib/genui-schema";
 
 const BKT_URL = process.env.BKT_SERVICE_URL || "http://localhost:8001";
+const GENUI_MODEL = process.env.GROQ_GENUI_MODEL || "openai/gpt-oss-120b";
 
-const google = createGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY,
+const groq = createGroq({
+    apiKey: process.env.GROQ_API_KEY,
 });
 
 const DEFAULT_BKT_STATE = (studentId: string, conceptId: string) => ({
@@ -76,9 +77,9 @@ export async function POST(req: NextRequest) {
             conceptName: richConceptName,
         });
 
-        // Use restricted schema so Gemini can only produce allowed component types
+        // Use restricted schema so the model can only produce allowed component types
         const result = streamText({
-            model: google("gemini-2.5-flash"),
+            model: groq(GENUI_MODEL),
             output: Output.object({ schema: genUISchema }),
             prompt,
         });

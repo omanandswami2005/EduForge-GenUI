@@ -1,20 +1,20 @@
-"""Gemini-powered BKT parameter estimator — seeds initial BKT params per concept."""
+"""Groq-powered BKT parameter estimator — seeds initial BKT params per concept."""
 import json
-import google.generativeai as genai
+from groq import AsyncGroq
 import os
 from tenacity import retry, stop_after_attempt, wait_exponential
 import structlog
 
 logger = structlog.get_logger()
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+GROQ_MODEL = os.environ.get("GROQ_INGESTION_MODEL", "openai/gpt-oss-120b")
 
 
 class BKTParamsGenerator:
-    """Estimates initial BKT parameters for each concept using Gemini."""
+    """Estimates initial BKT parameters for each concept using Groq."""
 
     def __init__(self):
-        self.model = genai.GenerativeModel("gemini-2.5-flash")
+        self.client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY", ""))
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=10))
     async def generate(self, subtopic: dict, concepts: list[str]) -> list[dict]:
@@ -56,8 +56,11 @@ Rules:
 - Sum of p_slip + p_guess should be < 0.5
 - Output ONLY the JSON array."""
 
-        response = await self.model.generate_content_async(prompt)
-        text = response.text.strip()
+        response = await self.client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.choices[0].message.content.strip()
 
         if text.startswith("```"):
             text = text.split("\n", 1)[1]

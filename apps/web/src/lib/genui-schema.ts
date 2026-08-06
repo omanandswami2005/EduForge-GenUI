@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ALLOWED_COMPONENTS, LEVEL_NAMES as SHARED_LEVEL_NAMES } from "@eduforge/shared";
 
 // ── Individual component schemas ──
 
@@ -11,10 +12,10 @@ const stepByStepSchema = z.object({
                 number: z.number(),
                 title: z.string(),
                 explanation: z.string(),
-                example: z.string().optional(),
+                example: z.string().nullable(),
             })
         ),
-        summary: z.string().optional(),
+        summary: z.string().nullable(),
     }),
 });
 
@@ -23,7 +24,7 @@ const hintCardSchema = z.object({
     props: z.object({
         hint_level: z.enum(["gentle", "moderate", "direct"]),
         hint_text: z.string().describe("The hint content"),
-        follow_up_question: z.string().optional().describe("Socratic follow-up"),
+        follow_up_question: z.string().nullable().describe("Socratic follow-up"),
     }),
 });
 
@@ -39,7 +40,12 @@ const formulaCardSchema = z.object({
             })
         ),
         example: z.object({
-            values: z.record(z.string(), z.string()),
+            values: z.array(
+                z.object({
+                    key: z.string().describe("Variable symbol"),
+                    value: z.string().describe("Value substituted for this variable"),
+                })
+            ),
             result: z.string(),
         }),
     }),
@@ -54,7 +60,7 @@ const conceptDiagramSchema = z.object({
             z.object({
                 id: z.string(),
                 label: z.string(),
-                description: z.string().optional(),
+                description: z.string().nullable(),
                 connects_to: z.array(z.string()),
             })
         ),
@@ -73,7 +79,7 @@ const analogyCardSchema = z.object({
                 analogy_aspect: z.string(),
             })
         ),
-        limitation: z.string().optional(),
+        limitation: z.string().nullable(),
     }),
 });
 
@@ -136,15 +142,9 @@ export const genUISchema = z.object({
 export type GenUIComponent = z.infer<typeof genUIComponentSchema>;
 export type GenUIOutput = z.infer<typeof genUISchema>;
 
-// ── Scaffold-level → allowed component names ──
+// ── Scaffold-level → allowed component names (single source: @eduforge/shared) ──
 
-export const ALLOWED_MAP: Record<number, string[]> = {
-    0: ["StepByStep", "HintCard", "FormulaCard", "AnalogyCard"],
-    1: ["StepByStep", "HintCard", "FormulaCard", "ConceptDiagram"],
-    2: ["ConceptDiagram", "FormulaCard", "HintCard", "PracticeExercise"],
-    3: ["ConceptDiagram", "PracticeExercise", "ProofWalkthrough"],
-    4: ["ConceptDiagram", "ExpertSummary", "ProofWalkthrough", "PracticeExercise"],
-};
+export const ALLOWED_MAP: Record<number, string[]> = ALLOWED_COMPONENTS;
 
 const ALL_COMPONENTS = [
     "StepByStep", "HintCard", "FormulaCard", "ConceptDiagram",
@@ -210,7 +210,7 @@ REQUIRED BEHAVIOR:
 - NEVER give direct answers. Guide through questions.`,
 };
 
-const LEVEL_NAMES = ["Novice", "Developing", "Approaching", "Proficient", "Mastered"];
+export const LEVEL_NAMES = SHARED_LEVEL_NAMES;
 
 // ── Prompt builder (replaces Python GenUIPromptBuilder) ──
 

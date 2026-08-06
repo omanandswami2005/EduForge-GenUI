@@ -387,20 +387,20 @@ function FormulaCardView({ formula, variables, example }: any) {
                                 className="overflow-hidden"
                             >
                                 <div className="px-4 pb-4 space-y-2">
-                                    {example.values && (
+                                    {example.values && example.values.length > 0 && (
                                         <motion.div
                                             className="flex flex-wrap gap-2"
                                             initial="initial"
                                             animate="animate"
                                             variants={stagger}
                                         >
-                                            {Object.entries(example.values).map(([k, v], i) => (
+                                            {example.values.map(({ key, value }: { key: string; value: string }, i: number) => (
                                                 <motion.span
-                                                    key={k}
+                                                    key={key}
                                                     variants={fadeUp}
                                                     className="px-2 py-1 bg-blue-50 dark:bg-blue-950 rounded text-sm text-gray-700 dark:text-gray-300 border border-blue-100 dark:border-blue-900"
                                                 >
-                                                    <MathText inline>{`${k} = ${String(v)}`}</MathText>
+                                                    <MathText inline>{`${key} = ${String(value)}`}</MathText>
                                                 </motion.span>
                                             ))}
                                         </motion.div>
