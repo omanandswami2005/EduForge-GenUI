@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSessionStore } from "@/stores/sessionStore";
 import { api } from "@/lib/api";
+import { OverallMasteryPanel } from "@/components/student/OverallMasteryPanel";
 
 export default function StudentLearnPage() {
     const { user, token, loading } = useSessionStore();
@@ -39,6 +40,8 @@ export default function StudentLearnPage() {
     return (
         <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">My Lessons</h2>
+
+            {user && <OverallMasteryPanel studentId={user.uid} lessons={lessons} />}
 
             {/* Enroll */}
             <div className="max-w-2xl bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6 flex gap-3">
