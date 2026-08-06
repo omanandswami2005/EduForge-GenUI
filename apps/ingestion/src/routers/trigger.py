@@ -73,10 +73,10 @@ async def trigger_ingestion(request: Request):
         await fs.update_ingestion_status(lesson_id, "generating_topics", 45, "Saving topic structure...")
         subtopic_ids = await fs.save_subtopics(lesson_id, subtopics_raw)
 
-        # Map order to IDs for prerequisite resolution
-        order_to_id = {}
-        for st_raw, st_id in zip(subtopics_raw, subtopic_ids):
-            order_to_id[st_raw["order"]] = st_id
+        # Resolve each subtopic's prerequisiteSubtopicOrders (order numbers,
+        # the only thing the LLM could reference) into prerequisiteSubtopicIds
+        # (real Firestore doc IDs) now that IDs exist.
+        await fs.resolve_prerequisite_ids(lesson_id, subtopics_raw, subtopic_ids)
 
         # Step 4: Generate MCQs for each subtopic (parallel)
         await fs.update_ingestion_status(lesson_id, "generating_mcqs", 55, "Generating assessment questions...")

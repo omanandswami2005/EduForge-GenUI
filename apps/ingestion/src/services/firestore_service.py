@@ -32,12 +32,36 @@ class IngestionFirestoreService:
         for st in subtopics:
             ref = self.db.collection("lessons").document(lesson_id).collection("subtopics").document()
             st_data = {**st, "createdAt": datetime.utcnow()}
-            # Convert prerequisiteSubtopicOrders to prerequisiteSubtopicIds later
             batch.set(ref, st_data)
             ids.append(ref.id)
         await batch.commit()
         logger.info("subtopics_saved", lesson_id=lesson_id, count=len(ids))
         return ids
+
+    async def resolve_prerequisite_ids(
+        self, lesson_id: str, subtopics: list[dict], subtopic_ids: list[str]
+    ):
+        """
+        subtopics come from the LLM with prerequisiteSubtopicOrders (order
+        numbers — the LLM has no way to know Firestore doc IDs ahead of
+        time). Once save_subtopics() has assigned real IDs, resolve those
+        orders into an actual prerequisiteSubtopicIds field on each doc, so
+        the frontend's dependency graph (and prerequisite-locking) can just
+        follow IDs without re-deriving order relationships itself.
+        """
+        order_to_id = {st["order"]: sid for st, sid in zip(subtopics, subtopic_ids)}
+
+        batch = self.db.batch()
+        any_update = False
+        for st, sid in zip(subtopics, subtopic_ids):
+            orders = st.get("prerequisiteSubtopicOrders", [])
+            prereq_ids = [order_to_id[o] for o in orders if o in order_to_id]
+            ref = self.db.collection("lessons").document(lesson_id).collection("subtopics").document(sid)
+            batch.update(ref, {"prerequisiteSubtopicIds": prereq_ids})
+            any_update = True
+        if any_update:
+            await batch.commit()
+        logger.info("prerequisite_ids_resolved", lesson_id=lesson_id, count=len(subtopic_ids))
 
     async def save_mcqs(self, lesson_id: str, subtopic_id: str, mcqs: list[dict]):
         """Save MCQs as subcollection of the lesson."""
