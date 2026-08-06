@@ -8,6 +8,23 @@ export const SCAFFOLD_LEVELS = [
     { level: 4, name: 'mastered', range: [0.8, 1.0] as const, description: 'Expert — challenge mode, Socratic only' },
 ] as const;
 
+export const LEVEL_NAMES = ['Novice', 'Developing', 'Approaching', 'Proficient', 'Mastered'] as const;
+
+/**
+ * Scaffold level → allowed GenUI component names.
+ * SOURCE OF TRUTH for the TS side (apps/web imports this — see genui-schema.ts).
+ * Mirrored by hand in apps/bkt-service/src/bkt/scaffold_resolver.py's
+ * COMPONENT_CATALOG (Python can't import this file directly) — keep both in sync
+ * when changing either one.
+ */
+export const ALLOWED_COMPONENTS: Record<number, string[]> = {
+    0: ['StepByStep', 'HintCard', 'FormulaCard', 'AnalogyCard'],
+    1: ['StepByStep', 'HintCard', 'FormulaCard', 'ConceptDiagram'],
+    2: ['ConceptDiagram', 'FormulaCard', 'HintCard', 'PracticeExercise'],
+    3: ['ConceptDiagram', 'PracticeExercise', 'ProofWalkthrough'],
+    4: ['ConceptDiagram', 'ExpertSummary', 'ProofWalkthrough', 'PracticeExercise'],
+};
+
 export function getScaffoldLevel(pMastery: number): number {
     if (pMastery < 0.2) return 0;
     if (pMastery < 0.4) return 1;

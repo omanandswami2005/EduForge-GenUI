@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getScaffoldLevel } from "@eduforge/shared";
 
 interface ConceptState {
     conceptId: string;
@@ -50,7 +51,7 @@ export const useBKTStore = create<BKTStore>()(
                             pMastery: data.pMastery,
                             mastered: data.mastered,
                             attempts: data.attempts,
-                            scaffoldLevel: Math.min(4, Math.floor(data.pMastery * 5)),
+                            scaffoldLevel: getScaffoldLevel(data.pMastery),
                         };
                     }
                 });

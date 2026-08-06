@@ -10,7 +10,8 @@
         "test": "jest --passWithNoTests"
     },
     "dependencies": {
-        "@ai-sdk/google": "^3.0.58",
+        "@eduforge/shared": "workspace:*",
+        "@ai-sdk/groq": "^3.0.55",
         "@ai-sdk/react": "^3.0.147",
         "@hookform/resolvers": "^3.9.1",
         "ai": "^6.0.145",

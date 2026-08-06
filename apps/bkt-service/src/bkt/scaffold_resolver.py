@@ -1,5 +1,11 @@
 """
 Scaffold Resolver: Maps P(mastery) to scaffold level and allowed GenUI components.
+
+SYNC WARNING: Python can't import the TS workspace package, so this is a hand
+mirror of packages/shared/src/constants/scaffold-levels.ts (SCAFFOLD_LEVELS,
+ALLOWED_COMPONENTS). That file is the source of truth for the TS side
+(apps/web imports it directly). If you change the ranges or the component
+catalog here, make the same change there — and vice versa.
 """
 from dataclasses import dataclass
 
