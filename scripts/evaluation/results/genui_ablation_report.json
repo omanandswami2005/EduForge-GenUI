@@ -1,0 +1,99 @@
+{
+  "genui_url": "http://localhost:3000/api/genui",
+  "model": "openai/gpt-oss-120b",
+  "concepts": [
+    {
+      "concept": "Inertia and Newton's First Law",
+      "conditions": {
+        "scaffolded_novice": {
+          "n_sentences": 35,
+          "n_words": 323,
+          "avg_sentence_length": 9.23,
+          "avg_word_length": 4.21,
+          "flesch_reading_ease": 80.9,
+          "flesch_kincaid_grade": 4.3
+        },
+        "scaffolded_mastered": {
+          "n_sentences": 27,
+          "n_words": 183,
+          "avg_sentence_length": 6.78,
+          "avg_word_length": 6.02,
+          "flesch_reading_ease": 26.6,
+          "flesch_kincaid_grade": 11.2
+        },
+        "unscaffolded_control": {
+          "n_sentences": 70,
+          "n_words": 973,
+          "avg_sentence_length": 13.9,
+          "avg_word_length": 4.39,
+          "flesch_reading_ease": 70.0,
+          "flesch_kincaid_grade": 7.0
+        }
+      }
+    },
+    {
+      "concept": "Recursion in Programming",
+      "conditions": {
+        "scaffolded_novice": {
+          "n_sentences": 33,
+          "n_words": 207,
+          "avg_sentence_length": 6.27,
+          "avg_word_length": 4.82,
+          "flesch_reading_ease": 75.4,
+          "flesch_kincaid_grade": 4.3
+        },
+        "scaffolded_mastered": {
+          "n_sentences": 50,
+          "n_words": 269,
+          "avg_sentence_length": 5.38,
+          "avg_word_length": 5.94,
+          "flesch_reading_ease": 30.9,
+          "flesch_kincaid_grade": 10.3
+        },
+        "unscaffolded_control": {
+          "n_sentences": 120,
+          "n_words": 1378,
+          "avg_sentence_length": 11.48,
+          "avg_word_length": 4.83,
+          "flesch_reading_ease": 60.4,
+          "flesch_kincaid_grade": 7.7
+        }
+      }
+    },
+    {
+      "concept": "Photosynthesis: Light-Dependent Reactions",
+      "conditions": {
+        "scaffolded_novice": {
+          "n_sentences": 65,
+          "n_words": 275,
+          "avg_sentence_length": 4.23,
+          "avg_word_length": 5.29,
+          "flesch_reading_ease": 54.6,
+          "flesch_kincaid_grade": 6.7
+        },
+        "scaffolded_mastered": {
+          "n_sentences": 46,
+          "n_words": 280,
+          "avg_sentence_length": 6.09,
+          "avg_word_length": 5.41,
+          "flesch_reading_ease": 47.5,
+          "flesch_kincaid_grade": 8.2
+        },
+        "unscaffolded_control": {
+          "n_sentences": 120,
+          "n_words": 1430,
+          "avg_sentence_length": 11.92,
+          "avg_word_length": 4.97,
+          "flesch_reading_ease": 52.3,
+          "flesch_kincaid_grade": 8.9
+        }
+      }
+    }
+  ],
+  "average_grade_by_condition": {
+    "scaffolded_novice": 5.1,
+    "scaffolded_mastered": 9.9,
+    "unscaffolded_control": 7.87
+  },
+  "novice_to_mastered_grade_gap": 4.8
+}
