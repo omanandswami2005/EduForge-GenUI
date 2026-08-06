@@ -47,7 +47,7 @@ export default function SubtopicLearnPage() {
     }, [subtopic, subtopicId, lessonId]);
 
     const handleAnswer = useCallback(
-        async (answer: string, isCorrect: boolean, timeTaken: number) => {
+        async (answer: string, isCorrect: boolean, timeTaken: number, misconceptionText?: string) => {
             if (!token || !studentId) return;
             const mcq = mcqs[currentMCQIdx];
             try {
@@ -60,16 +60,25 @@ export default function SubtopicLearnPage() {
                     selected_answer: answer,
                     is_correct: isCorrect,
                     time_taken_seconds: timeTaken,
+                    misconception_text: misconceptionText,
                 });
                 setBktResult(result);
 
-                // If scaffold level changed, force-refresh GenUI with new scaffold
-                if (result.scaffold_level !== useBKTStore.getState().scaffoldLevel) {
+                const scaffoldChanged = result.scaffold_level !== useBKTStore.getState().scaffoldLevel;
+                if (scaffoldChanged) {
                     useBKTStore.getState().setScaffoldDecision(
                         result.scaffold_level,
                         result.allowed_components
                     );
-                    generate(mcq.concept, subtopicId, lessonId, true, subtopic?.title); // forceRefresh=true
+                }
+                // Regenerate when the scaffold level moved, OR when this wrong
+                // answer revealed a specific misconception — the latter closes
+                // the loop: the misconception text (already known client-side
+                // from the MCQ's own authored data) gets threaded straight into
+                // the next generation's prompt so it's directly addressed,
+                // rather than only ever being displayed in the reveal panel.
+                if (scaffoldChanged || misconceptionText) {
+                    generate(mcq.concept, subtopicId, lessonId, true, subtopic?.title, undefined, misconceptionText);
                 }
             } catch (err) {
                 console.error("BKT update failed:", err);

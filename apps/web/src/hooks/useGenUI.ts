@@ -117,11 +117,13 @@ export function useGenUI(studentId: string) {
             forceRefresh = false,
             subtopicTitle?: string,
             forceScaffoldLevel?: number,
+            misconceptionContext?: string,
         ) => {
-            // Forced scaffold level (comparison view) always generates fresh —
-            // caching is keyed by subtopic+concept only, not by scaffold level,
-            // so it would otherwise collide with (or pollute) the real cached view.
-            const skipCache = typeof forceScaffoldLevel === "number";
+            // Forced scaffold level (comparison view) or a misconception-targeted
+            // remediation always generates fresh — caching is keyed by
+            // subtopic+concept only, so either would otherwise collide with (or
+            // permanently overwrite) the real cached view for that subtopic.
+            const skipCache = typeof forceScaffoldLevel === "number" || Boolean(misconceptionContext);
 
             if (!skipCache) {
                 // 1. Try Zustand in-memory cache first
@@ -172,6 +174,7 @@ export function useGenUI(studentId: string) {
                 studentId: studentIdRef.current,
                 subtopicTitle: subtopicTitle ?? conceptId,
                 ...(typeof forceScaffoldLevel === "number" ? { forceScaffoldLevel } : {}),
+                ...(misconceptionContext ? { misconceptionContext } : {}),
             });
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps

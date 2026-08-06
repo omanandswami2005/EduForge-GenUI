@@ -91,7 +91,7 @@ async function streamWithFallback(prompt: string) {
 
 export async function POST(req: NextRequest) {
     try {
-        const { conceptId, subtopicId, lessonId, studentId, subtopicTitle, forceScaffoldLevel } = await req.json();
+        const { conceptId, subtopicId, lessonId, studentId, subtopicTitle, forceScaffoldLevel, misconceptionContext } = await req.json();
 
         if (!conceptId || !studentId) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -154,6 +154,7 @@ export async function POST(req: NextRequest) {
             pMastery: scaffold.p_mastery ?? 0.2,
             allowed,
             conceptName: richConceptName,
+            misconceptionContext: typeof misconceptionContext === "string" ? misconceptionContext : undefined,
         });
 
         // Use restricted schema so the model can only produce allowed component types

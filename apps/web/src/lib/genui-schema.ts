@@ -219,8 +219,16 @@ export function buildGenUIPrompt(opts: {
     pMastery: number;
     allowed: string[];
     conceptName: string;
+    /**
+     * The specific misconception text authored for the wrong MCQ option the
+     * student just picked (AdaptiveMCQ -> handleAnswer -> useGenUI.generate).
+     * When present, this generation is a targeted remediation, not the
+     * default view for the concept — the model is told to correct this
+     * exact wrong idea rather than re-teach the concept generically.
+     */
+    misconceptionContext?: string;
 }): string {
-    const { scaffoldLevel, pMastery, allowed, conceptName } = opts;
+    const { scaffoldLevel, pMastery, allowed, conceptName, misconceptionContext } = opts;
     const forbidden = ALL_COMPONENTS.filter((c) => !allowed.includes(c));
 
     return `You are EduForge's intelligent tutoring UI generator. Create educational visualizations as structured component objects.
@@ -238,6 +246,19 @@ If you output a forbidden component, it will be silently dropped.
 
 PEDAGOGICAL RULES:
 ${PEDAGOGICAL_RULES[scaffoldLevel] ?? PEDAGOGICAL_RULES[2]}
+${misconceptionContext
+            ? `
+MISCONCEPTION REMEDIATION (highest priority — overrides the general pedagogical rules above where they conflict):
+The student just answered incorrectly in a way that reveals this specific
+wrong idea: "${misconceptionContext}"
+Design this content to directly confront and correct THIS misconception —
+don't just re-explain the concept generically. Show why that specific
+reasoning breaks down (a contrasting example or a case where it visibly
+fails works well), then restate the correct idea. Never use the word
+"misconception" or otherwise call out that they were wrong — just teach
+the correct model naturally, as if continuing the lesson.`
+            : ""
+        }
 
 TOPIC: ${conceptName}
 
