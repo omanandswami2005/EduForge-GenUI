@@ -84,28 +84,51 @@ class FirestoreService:
         return docs
 
     async def get_class_analytics(self, lesson_id: str) -> dict:
-        """Get aggregated BKT states for all students in a lesson."""
-        # Query all responses for this lesson
-        query = self.db.collection("responses").where("lessonId", "==", lesson_id)
-        responses = []
-        async for doc in query.stream():
-            responses.append(doc.to_dict())
+        """
+        Class mastery matrix for the teacher heatmap: every student enrolled in
+        this lesson x every concept they have live BKT state for. Reads current
+        mastery directly from bkt_states (the same source the student's own
+        mastery HUD reads from), not derived from historical responses.
+        """
+        enroll_query = self.db.collection("enrollments").where("lessonId", "==", lesson_id)
+        student_ids: list[str] = []
+        async for doc in enroll_query.stream():
+            sid = doc.to_dict().get("studentId")
+            if sid:
+                student_ids.append(sid)
 
-        # Aggregate by student and concept
-        student_states: dict[str, dict] = {}
-        for r in responses:
-            sid = r.get("studentId", "")
-            cid = r.get("conceptId", "")
-            key = f"{sid}_{cid}"
-            student_states[key] = {
-                "studentId": sid,
-                "conceptId": cid,
-                "pMastery": r.get("pMasteryAfter", 0),
-                "isCorrect": r.get("isCorrect", False),
-            }
+        students: list[dict] = []
+        concept_order: list[str] = []
+        seen_concepts: set[str] = set()
+        matrix: dict[str, dict[str, dict]] = {}
+
+        for sid in student_ids:
+            user_doc = await self.db.collection("users").document(sid).get()
+            user_data = user_doc.to_dict() if user_doc.exists else {}
+            name = user_data.get("displayName") or user_data.get("email") or sid
+
+            concepts_query = self.db.collection("bkt_states").document(sid).collection("concepts")
+            student_matrix: dict[str, dict] = {}
+            async for cdoc in concepts_query.stream():
+                cdata = cdoc.to_dict()
+                if cdata.get("lessonId") != lesson_id:
+                    continue
+                concept_id = cdata.get("conceptId", cdoc.id)
+                student_matrix[concept_id] = {
+                    "pMastery": cdata.get("pMastery", 0),
+                    "mastered": cdata.get("mastered", False),
+                    "attempts": cdata.get("attempts", 0),
+                }
+                if concept_id not in seen_concepts:
+                    seen_concepts.add(concept_id)
+                    concept_order.append(concept_id)
+
+            students.append({"id": sid, "name": name})
+            matrix[sid] = student_matrix
 
         return {
-            "totalResponses": len(responses),
-            "uniqueStudents": len(set(r.get("studentId") for r in responses)),
-            "states": list(student_states.values()),
+            "lessonId": lesson_id,
+            "students": students,
+            "concepts": concept_order,
+            "matrix": matrix,
         }

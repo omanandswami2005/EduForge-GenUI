@@ -6,6 +6,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useSessionStore } from "@/stores/sessionStore";
 import { api } from "@/lib/api";
+import { ClassMasteryHeatmap } from "@/components/teacher/ClassMasteryHeatmap";
 
 export default function LessonDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -52,9 +53,9 @@ export default function LessonDetailPage() {
     };
 
     return (
-        <main className="max-w-4xl mx-auto px-6 py-8">
+        <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{lesson.title}</h2>
                         <p className="text-gray-500 dark:text-gray-400">{lesson.subject}</p>
@@ -122,11 +123,18 @@ export default function LessonDetailPage() {
                 )}
             </div>
 
+            {/* Class mastery heatmap */}
+            {lesson.status === "published" && token && (
+                <div className="mb-6">
+                    <ClassMasteryHeatmap token={token} lessonId={id} />
+                </div>
+            )}
+
             {/* Subtopics list */}
             {subtopics.length > 0 && (
                 <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Topics</h3>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                         {subtopics.map((st: any, idx: number) => (
                             <div
                                 key={st.id || idx}
