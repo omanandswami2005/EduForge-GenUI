@@ -8,7 +8,9 @@
         "build": "pnpm --filter web build",
         "test": "pnpm --filter web test && pnpm run test:python",
         "test:python": "bash scripts/test/run_all_tests.sh",
-        "lint": "pnpm --filter web lint"
+        "lint": "pnpm --filter web lint",
+        "codegen:scaffold": "python3 scripts/codegen/generate_scaffold_levels.py",
+        "codegen:scaffold:check": "python3 scripts/codegen/generate_scaffold_levels.py --check"
     },
     "engines": {
         "node": ">=18"

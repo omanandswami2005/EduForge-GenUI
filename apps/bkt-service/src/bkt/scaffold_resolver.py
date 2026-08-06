@@ -1,30 +1,17 @@
 """
 Scaffold Resolver: Maps P(mastery) to scaffold level and allowed GenUI components.
 
-SYNC WARNING: Python can't import the TS workspace package, so this is a hand
-mirror of packages/shared/src/constants/scaffold-levels.ts (SCAFFOLD_LEVELS,
-ALLOWED_COMPONENTS). That file is the source of truth for the TS side
-(apps/web imports it directly). If you change the ranges or the component
-catalog here, make the same change there — and vice versa.
+The mapping data (SCAFFOLD_LEVELS, COMPONENT_CATALOG) lives in scaffold_data.py,
+generated from config/scaffold-levels.json by
+scripts/codegen/generate_scaffold_levels.py — that JSON is the single source
+of truth shared with the TS side (packages/shared). Only the resolution
+logic below is hand-written.
 """
 from dataclasses import dataclass
 
+from .scaffold_data import SCAFFOLD_LEVELS, COMPONENT_CATALOG
 
-SCAFFOLD_LEVELS = [
-    {"level": 0, "name": "novice", "range": (0.0, 0.2), "description": "Complete beginner — full guided walkthrough"},
-    {"level": 1, "name": "developing", "range": (0.2, 0.4), "description": "Some awareness — structured scaffold"},
-    {"level": 2, "name": "approaching", "range": (0.4, 0.6), "description": "Partial understanding — hints on request"},
-    {"level": 3, "name": "proficient", "range": (0.6, 0.8), "description": "Good understanding — practice focus"},
-    {"level": 4, "name": "mastered", "range": (0.8, 1.0), "description": "Expert — Socratic challenge mode"},
-]
-
-COMPONENT_CATALOG: dict[int, list[str]] = {
-    0: ["StepByStep", "HintCard", "FormulaCard", "AnalogyCard"],
-    1: ["StepByStep", "HintCard", "FormulaCard", "ConceptDiagram"],
-    2: ["ConceptDiagram", "FormulaCard", "HintCard", "PracticeExercise"],
-    3: ["ConceptDiagram", "PracticeExercise", "ProofWalkthrough"],
-    4: ["ConceptDiagram", "ExpertSummary", "ProofWalkthrough", "PracticeExercise"],
-}
+__all__ = ["SCAFFOLD_LEVELS", "COMPONENT_CATALOG", "ScaffoldDecision", "ScaffoldResolver"]
 
 
 @dataclass
@@ -46,8 +33,8 @@ class ScaffoldResolver:
                 level_info = sl
                 break
         else:
-            if p_mastery >= 0.8:
-                level_info = SCAFFOLD_LEVELS[4]
+            if p_mastery >= SCAFFOLD_LEVELS[-1]["range"][0]:
+                level_info = SCAFFOLD_LEVELS[-1]
 
         level = level_info["level"]
         components = COMPONENT_CATALOG[level]

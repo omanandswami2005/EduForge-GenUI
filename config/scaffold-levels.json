@@ -1,0 +1,46 @@
+{
+    "$comment": "Single source of truth for the scaffold-level -> allowed-GenUI-components mapping. Edit this file, then run `python3 scripts/codegen/generate_scaffold_levels.py` to regenerate the TS and Python consumers — never hand-edit the generated files.",
+    "masteryThreshold": 0.95,
+    "levels": [
+        {
+            "level": 0,
+            "name": "novice",
+            "displayName": "Novice",
+            "range": [0.0, 0.2],
+            "description": "Complete beginner — full guided walkthrough",
+            "allowedComponents": ["StepByStep", "HintCard", "FormulaCard", "AnalogyCard"]
+        },
+        {
+            "level": 1,
+            "name": "developing",
+            "displayName": "Developing",
+            "range": [0.2, 0.4],
+            "description": "Some awareness — structured scaffold with hints",
+            "allowedComponents": ["StepByStep", "HintCard", "FormulaCard", "ConceptDiagram"]
+        },
+        {
+            "level": 2,
+            "name": "approaching",
+            "displayName": "Approaching",
+            "range": [0.4, 0.6],
+            "description": "Partial understanding — hints available on request",
+            "allowedComponents": ["ConceptDiagram", "FormulaCard", "HintCard", "PracticeExercise"]
+        },
+        {
+            "level": 3,
+            "name": "proficient",
+            "displayName": "Proficient",
+            "range": [0.6, 0.8],
+            "description": "Good understanding — minimal scaffold, practice focus",
+            "allowedComponents": ["ConceptDiagram", "PracticeExercise", "ProofWalkthrough"]
+        },
+        {
+            "level": 4,
+            "name": "mastered",
+            "displayName": "Mastered",
+            "range": [0.8, 1.0],
+            "description": "Expert — challenge mode, Socratic only",
+            "allowedComponents": ["ConceptDiagram", "ExpertSummary", "ProofWalkthrough", "PracticeExercise"]
+        }
+    ]
+}
