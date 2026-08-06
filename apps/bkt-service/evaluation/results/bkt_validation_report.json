@@ -1,0 +1,164 @@
+{
+  "n_students_per_profile": 300,
+  "n_opportunities": 15,
+  "seed": 42,
+  "profiles": [
+    {
+      "profile": "fast_learner",
+      "description": "Learns quickly, rarely slips",
+      "n_students": 300,
+      "n_opportunities": 15,
+      "true_params": {
+        "p_initial": 0.1,
+        "p_learn": 0.45,
+        "p_slip": 0.08,
+        "p_guess": 0.25
+      },
+      "model_params": {
+        "p_initial": 0.1,
+        "p_learn": 0.45,
+        "p_slip": 0.08,
+        "p_guess": 0.25
+      },
+      "calibration_rmse": 0.0391,
+      "final_true_p_known": 1.0,
+      "final_model_p_mastery": 0.9986,
+      "plot": "results/fast_learner.png"
+    },
+    {
+      "profile": "average_learner",
+      "description": "Typical EduForge default params",
+      "n_students": 300,
+      "n_opportunities": 15,
+      "true_params": {
+        "p_initial": 0.2,
+        "p_learn": 0.2,
+        "p_slip": 0.1,
+        "p_guess": 0.25
+      },
+      "model_params": {
+        "p_initial": 0.2,
+        "p_learn": 0.2,
+        "p_slip": 0.1,
+        "p_guess": 0.25
+      },
+      "calibration_rmse": 0.0289,
+      "final_true_p_known": 0.9767,
+      "final_model_p_mastery": 0.9791,
+      "plot": "results/average_learner.png"
+    },
+    {
+      "profile": "slow_learner",
+      "description": "Needs many opportunities to learn",
+      "n_students": 300,
+      "n_opportunities": 15,
+      "true_params": {
+        "p_initial": 0.05,
+        "p_learn": 0.08,
+        "p_slip": 0.12,
+        "p_guess": 0.25
+      },
+      "model_params": {
+        "p_initial": 0.05,
+        "p_learn": 0.08,
+        "p_slip": 0.12,
+        "p_guess": 0.25
+      },
+      "calibration_rmse": 0.0267,
+      "final_true_p_known": 0.7467,
+      "final_model_p_mastery": 0.7589,
+      "plot": "results/slow_learner.png"
+    },
+    {
+      "profile": "already_proficient",
+      "description": "Starts most of the way there",
+      "n_students": 300,
+      "n_opportunities": 15,
+      "true_params": {
+        "p_initial": 0.75,
+        "p_learn": 0.2,
+        "p_slip": 0.1,
+        "p_guess": 0.2
+      },
+      "model_params": {
+        "p_initial": 0.75,
+        "p_learn": 0.2,
+        "p_slip": 0.1,
+        "p_guess": 0.2
+      },
+      "calibration_rmse": 0.0058,
+      "final_true_p_known": 0.9933,
+      "final_model_p_mastery": 0.996,
+      "plot": "results/already_proficient.png"
+    },
+    {
+      "profile": "misspecified_params",
+      "description": "True learner is fast (p_learn=0.45), but the model is told p_learn=0.15 (simulates a bad LLM-estimated BKT param) \u2014 tests robustness to inaccurate priors",
+      "n_students": 300,
+      "n_opportunities": 15,
+      "true_params": {
+        "p_initial": 0.1,
+        "p_learn": 0.45,
+        "p_slip": 0.08,
+        "p_guess": 0.25
+      },
+      "model_params": {
+        "p_initial": 0.1,
+        "p_learn": 0.15,
+        "p_slip": 0.08,
+        "p_guess": 0.25
+      },
+      "calibration_rmse": 0.0954,
+      "final_true_p_known": 1.0,
+      "final_model_p_mastery": 0.9972,
+      "plot": "results/misspecified_params.png"
+    }
+  ],
+  "consistency_checks": [
+    {
+      "name": "mastery_stays_in_bounds",
+      "description": "P(mastery) stays within [0.001, 0.999] under 50 alternating responses with extreme params",
+      "passed": true
+    },
+    {
+      "name": "monotonic_convergence_on_all_correct",
+      "description": "20 consecutive correct answers -> P(mastery) is non-decreasing and exceeds 0.9",
+      "passed": true,
+      "final_mastery": 0.999
+    },
+    {
+      "name": "single_slip_robustness",
+      "description": "A mastered student (P=0.97) who answers wrong once shouldn't collapse near zero",
+      "passed": true,
+      "p_mastery_before": 0.97,
+      "p_mastery_after_one_slip": 0.8494,
+      "drop": 0.1206
+    },
+    {
+      "name": "well_posed_params[fast_learner]",
+      "description": "p_slip (0.08) < p_guess (0.25)",
+      "passed": true
+    },
+    {
+      "name": "well_posed_params[average_learner]",
+      "description": "p_slip (0.1) < p_guess (0.25)",
+      "passed": true
+    },
+    {
+      "name": "well_posed_params[slow_learner]",
+      "description": "p_slip (0.12) < p_guess (0.25)",
+      "passed": true
+    },
+    {
+      "name": "well_posed_params[already_proficient]",
+      "description": "p_slip (0.1) < p_guess (0.2)",
+      "passed": true
+    },
+    {
+      "name": "well_posed_params[misspecified_params]",
+      "description": "p_slip (0.08) < p_guess (0.25)",
+      "passed": true
+    }
+  ],
+  "consistency_checks_passed": "8/8"
+}
