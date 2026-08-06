@@ -46,6 +46,47 @@ function speak(text: string) {
     window.speechSynthesis.speak(utterance);
 }
 
+const VALID_LETTERS = ["A", "B", "C", "D"];
+
+/**
+ * Dev-mode-only shape guard. The grading logic below does strict `===`
+ * comparisons against `question.correct_answer` — if the data doesn't match
+ * MCQ (letter-keyed options + a letter correct_answer), those comparisons
+ * fail silently (e.g. string "0" !== number 0) and every answer reads as
+ * wrong with no error anywhere. This surfaces that immediately instead of
+ * requiring a live click-through to notice.
+ */
+function getShapeProblems(question: MCQ): string[] {
+    const problems: string[] = [];
+    if (Array.isArray(question.options) || typeof question.options !== "object" || question.options === null) {
+        problems.push(
+            `options must be an object keyed "A".."D" (got ${Array.isArray(question.options) ? "an array" : typeof question.options
+            }). If this came from a seed/demo script, it's likely using {options: string[], correct_answer: number} — the wrong shape.`
+        );
+    } else {
+        const keys = Object.keys(question.options);
+        const badKeys = keys.filter((k) => !VALID_LETTERS.includes(k));
+        if (badKeys.length > 0) {
+            problems.push(`options has non-letter keys: ${badKeys.join(", ")} (expected only A-D).`);
+        }
+    }
+    if (typeof question.correct_answer !== "string" || !VALID_LETTERS.includes(question.correct_answer)) {
+        problems.push(
+            `correct_answer must be one of "A"/"B"/"C"/"D" as a string (got ${JSON.stringify(
+                question.correct_answer
+            )} of type ${typeof question.correct_answer}).`
+        );
+    } else if (
+        question.options &&
+        typeof question.options === "object" &&
+        !Array.isArray(question.options) &&
+        !(question.correct_answer in question.options)
+    ) {
+        problems.push(`correct_answer "${question.correct_answer}" is not a key in options.`);
+    }
+    return problems;
+}
+
 export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQProps) {
     const [selected, setSelected] = useState<string | null>(null);
     const [revealed, setRevealed] = useState(false);
@@ -53,6 +94,20 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const speechSupportedRef = useRef(typeof window !== "undefined" && "speechSynthesis" in window);
+
+    const shapeProblems = useMemo(
+        () => (process.env.NODE_ENV === "production" ? [] : getShapeProblems(question)),
+        [question]
+    );
+
+    useEffect(() => {
+        if (shapeProblems.length === 0) return;
+        console.error(
+            `[AdaptiveMCQ] Question ${question.id ?? "(no id)"} has an invalid shape — grading will silently mark every answer wrong:\n` +
+            shapeProblems.map((p) => `  - ${p}`).join("\n"),
+            question
+        );
+    }, [shapeProblems, question]);
 
     /**
      * Shuffle options once per question (keyed by question.id).
@@ -153,6 +208,16 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
 
     return (
         <div className="space-y-4">
+            {shapeProblems.length > 0 && (
+                <div className="p-3 rounded-lg border-2 border-red-500 bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200 text-xs font-mono space-y-1">
+                    <p className="font-sans font-semibold text-sm">
+                        ⚠ Dev-only: this question&apos;s data shape is invalid — grading below will be wrong
+                    </p>
+                    {shapeProblems.map((p) => (
+                        <p key={p}>• {p}</p>
+                    ))}
+                </div>
+            )}
             <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                     <span
