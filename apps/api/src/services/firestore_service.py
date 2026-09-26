@@ -1,6 +1,7 @@
 """Firestore service for API gateway."""
 import os
 from google.cloud import firestore
+from .join_codes import generate_code
 
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "eduforge-genui-2026")
 
@@ -72,6 +73,53 @@ class FirestoreService:
             "status": "active",
         })
         return doc_id
+
+    async def is_enrolled(self, student_id: str, lesson_id: str) -> bool:
+        doc = await self.db.collection("enrollments").document(f"{student_id}_{lesson_id}").get()
+        return doc.exists
+
+    # ── Join codes ────────────────────────────────────────────────────────
+    # joinCodes/{CODE} -> {lessonId}; the lesson doc mirrors joinCode and
+    # joinEnabled so the teacher UI can read them with the lesson.
+
+    async def ensure_join_code(self, lesson: dict, regenerate: bool = False) -> dict:
+        """Return the lesson's join code, creating (or replacing) it if needed."""
+        existing = lesson.get("joinCode")
+        if existing and not regenerate:
+            return {"code": existing, "enabled": lesson.get("joinEnabled", True)}
+
+        code = None
+        for _ in range(8):
+            candidate = generate_code()
+            try:
+                # create() fails if the doc exists — that's the uniqueness check
+                await self.db.collection("joinCodes").document(candidate).create({
+                    "lessonId": lesson["id"],
+                    "createdAt": firestore.SERVER_TIMESTAMP,
+                })
+                code = candidate
+                break
+            except Exception:
+                continue
+        if code is None:
+            raise RuntimeError("Could not allocate a unique join code")
+
+        if existing:
+            await self.db.collection("joinCodes").document(existing).delete()
+        enabled = lesson.get("joinEnabled", True)
+        await self.update_lesson(lesson["id"], {"joinCode": code, "joinEnabled": enabled})
+        return {"code": code, "enabled": enabled}
+
+    async def resolve_join_code(self, code: str) -> dict | None:
+        """Lesson for a normalized code, or None if the code doesn't exist."""
+        doc = await self.db.collection("joinCodes").document(code).get()
+        if not doc.exists:
+            return None
+        lesson = await self.get_lesson(doc.to_dict()["lessonId"])
+        # Guard against a stale mapping left behind by a regenerated code
+        if not lesson or lesson.get("joinCode") != code:
+            return None
+        return lesson
 
     async def get_student_enrollments(self, student_id: str) -> list[dict]:
         query = self.db.collection("enrollments").where("studentId", "==", student_id)

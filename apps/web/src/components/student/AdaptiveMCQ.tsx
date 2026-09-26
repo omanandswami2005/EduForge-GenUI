@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Badge, ProgressBar } from "@/components/ui";
+import { masteryTone } from "@/lib/design";
 
 interface MCQ {
     id: string;
@@ -159,17 +161,17 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
     const optionColor = (displayLetter: string) => {
         if (!revealed) {
             if (isSubmitting && selected === displayLetter) {
-                return "border-blue-400 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-100 opacity-80";
+                return "border-accent bg-accent/10 text-accent opacity-80";
             }
             return selected === displayLetter
-                ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-100"
-                : "border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-400 cursor-pointer";
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-line bg-surface-2/40 hover:border-line-strong hover:bg-surface-2 cursor-pointer";
         }
         if (displayLetter === displayedCorrectLetter)
-            return "border-green-500 bg-green-50 dark:bg-green-950 text-green-900 dark:text-green-100";
+            return "border-success bg-success/10 text-success";
         if (displayLetter === selected)
-            return "border-red-400 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300";
-        return "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500";
+            return "border-danger bg-danger/10 text-danger";
+        return "border-line text-fg-subtle";
     };
 
     const speakTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -213,7 +215,7 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
     return (
         <div className="space-y-4">
             {shapeProblems.length > 0 && (
-                <div className="p-3 rounded-lg border-2 border-red-500 bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200 text-xs font-mono space-y-1">
+                <div className="p-3 rounded-lg border-2 border-danger bg-danger/10 text-danger text-xs font-mono space-y-1">
                     <p className="font-sans font-semibold text-sm">
                         ⚠ Dev-only: this question&apos;s data shape is invalid — grading below will be wrong
                     </p>
@@ -224,17 +226,10 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
             )}
             <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                    <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${question.tier === 1
-                            ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
-                            : question.tier === 2
-                                ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300"
-                                : "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300"
-                            }`}
-                    >
+                    <Badge tone={question.tier === 1 ? "info" : question.tier === 2 ? "violet" : "warning"}>
                         {question.tier === 1 ? "Foundation" : question.tier === 2 ? "Understanding" : "Analysis"}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Testing: {question.concept}</span>
+                    </Badge>
+                    <span className="text-xs font-mono text-fg-subtle">Testing: {question.concept}</span>
                 </div>
 
                 {/* TTS Speaker button */}
@@ -242,9 +237,9 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
                     <button
                         type="button"
                         onClick={isSpeaking ? handleStopSpeak : handleSpeak}
-                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${isSpeaking
-                            ? "border-blue-400 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-                            : "border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-400"
+                        className={`flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-full border transition-colors ${isSpeaking
+                            ? "border-accent bg-accent/10 text-accent"
+                            : "border-line text-fg-subtle hover:border-line-strong"
                             }`}
                         aria-label={isSpeaking ? "Stop speaking" : "Read question aloud"}
                         title={isSpeaking ? "Stop speaking" : "Read question aloud"}
@@ -267,7 +262,7 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
                 )}
             </div>
 
-            <h3 className="text-base font-medium text-gray-900 dark:text-white leading-relaxed">{question.question}</h3>
+            <h3 className="text-base font-medium text-fg leading-relaxed">{question.question}</h3>
 
             <div className="space-y-2">
                 {shuffledOptions.map(([, text], i) => {
@@ -276,11 +271,11 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
                         <motion.button
                             key={displayLetter}
                             onClick={() => handleSelect(displayLetter)}
-                            className={`w-full text-left p-4 rounded-lg border-2 transition-all ${optionColor(displayLetter)}`}
+                            className={`w-full text-left p-4 rounded-lg border transition-all ${optionColor(displayLetter)}`}
                             whileTap={{ scale: revealed || isSubmitting ? 1 : 0.99 }}
                             disabled={revealed || isSubmitting}
                         >
-                            <span className="font-semibold mr-2">{displayLetter}.</span>
+                            <span className="font-mono font-semibold mr-2">{displayLetter}.</span>
                             {text}
                             {/* Loading spinner on the selected option while submitting */}
                             {isSubmitting && selected === displayLetter && (
@@ -298,7 +293,7 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400"
+                        className="flex items-center gap-2 text-sm text-accent"
                     >
                         <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                         Checking answer...
@@ -312,41 +307,41 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={`p-4 rounded-lg ${selected === displayedCorrectLetter
-                            ? "bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800"
-                            : "bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800"
+                            ? "bg-success/10 border border-success/30"
+                            : "bg-danger/10 border border-danger/30"
                             }`}
                     >
                         {selected === displayedCorrectLetter ? (
                             <div>
-                                <p className="font-medium text-green-800 dark:text-green-300">Correct!</p>
-                                <p className="text-sm text-green-700 dark:text-green-400 mt-1">{question.explanation}</p>
+                                <p className="font-medium text-success">Correct!</p>
+                                <p className="text-sm text-fg-muted mt-1">{question.explanation}</p>
                             </div>
                         ) : (
                             <div>
-                                <p className="font-medium text-red-800 dark:text-red-300">
+                                <p className="font-medium text-danger">
                                     Not quite — the correct answer is {displayedCorrectLetter}
                                 </p>
                                 {selected &&
                                     question.misconceptions[displayToOriginal[selected] ?? selected] && (
-                                        <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+                                        <p className="text-sm text-fg mt-1">
                                             {question.misconceptions[displayToOriginal[selected] ?? selected]}
                                         </p>
                                     )}
-                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">{question.explanation}</p>
+                                <p className="text-sm text-fg-muted mt-2">{question.explanation}</p>
                             </div>
                         )}
 
                         {bktUpdateResult && (
-                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <div className="mt-3 pt-3 border-t border-line">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">Mastery</span>
-                                    <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                                        <div
-                                            className="bg-blue-500 h-1.5 rounded-full transition-all duration-700"
-                                            style={{ width: `${bktUpdateResult.p_mastery_after * 100}%` }}
-                                        />
-                                    </div>
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    <span className="eyebrow">Mastery</span>
+                                    <ProgressBar
+                                        value={bktUpdateResult.p_mastery_after * 100}
+                                        tone={masteryTone(bktUpdateResult.p_mastery_after)}
+                                        size="sm"
+                                        className="flex-1"
+                                    />
+                                    <span className="text-xs font-mono text-fg-subtle">
                                         {Math.round(bktUpdateResult.p_mastery_after * 100)}%
                                     </span>
                                 </div>
@@ -354,9 +349,9 @@ export function AdaptiveMCQ({ question, onAnswer, bktUpdateResult }: AdaptiveMCQ
                         )}
 
                         {bktUpdateResult?.misconception && (
-                            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Let&apos;s clarify this misconception</p>
-                                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">{bktUpdateResult.misconception.explanation}</p>
+                            <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                                <p className="text-sm font-medium text-warning">Let&apos;s clarify this misconception</p>
+                                <p className="text-sm text-fg-muted mt-1">{bktUpdateResult.misconception.explanation}</p>
                             </div>
                         )}
                     </motion.div>

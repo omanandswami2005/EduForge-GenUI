@@ -132,5 +132,9 @@ async def trigger_ingestion(request: Request):
     except Exception as e:
         logger.error("ingestion_failed", lesson_id=lesson_id, error=str(e), traceback=traceback.format_exc())
         await fs.update_ingestion_status(lesson_id, "failed", 0, f"Ingestion failed: {str(e)}", error=str(e))
+        # Set the terminal status here rather than relying solely on the Pub/Sub
+        # completion callback — locally there is no Pub/Sub, and without this the
+        # lesson shows as "processing" forever.
+        await fs.db.collection("lessons").document(lesson_id).update({"status": "failed"})
         pubsub.publish_completion(lesson_id, "failed")
         return {"status": "error", "detail": str(e)}

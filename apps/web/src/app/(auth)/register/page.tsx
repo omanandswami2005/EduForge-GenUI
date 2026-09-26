@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { GraduationCap, Presentation } from "lucide-react";
 import { useSessionStore } from "@/stores/sessionStore";
+import { AuthShell } from "@/components/shared/AuthShell";
+import { Alert, Button, Input, Label } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 export default function RegisterPage() {
     const [name, setName] = useState("");
@@ -27,101 +31,77 @@ export default function RegisterPage() {
         }
     };
 
+    const roles = [
+        { value: "teacher" as const, label: "Teacher", hint: "Upload & analyze", Icon: Presentation },
+        { value: "student" as const, label: "Student", hint: "Learn adaptively", Icon: GraduationCap },
+    ];
+
     return (
-        <div className="min-h-dvh flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-            <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-8">
-                <h1 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">
-                    Create your <span className="text-blue-600 dark:text-blue-400">EduForge</span> account
-                </h1>
-
-                {error && (
-                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400">
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
-                        <input
-                            id="name"
-                            type="text"
-                            required
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-                        <input
-                            id="email"
-                            type="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            required
-                            minLength={6}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">I am a...</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setRole("teacher")}
-                                className={`p-3 rounded-lg border-2 text-center transition-all ${role === "teacher"
-                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-                                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-700 dark:text-gray-300"
-                                    }`}
-                            >
-                                <div className="text-2xl mb-1">👩‍🏫</div>
-                                <div className="text-sm font-medium">Teacher</div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setRole("student")}
-                                className={`p-3 rounded-lg border-2 text-center transition-all ${role === "student"
-                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-                                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-700 dark:text-gray-300"
-                                    }`}
-                            >
-                                <div className="text-2xl mb-1">🎓</div>
-                                <div className="text-sm font-medium">Student</div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                    >
-                        {loading ? "Creating account..." : "Create Account"}
-                    </button>
-                </form>
-
-                <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <AuthShell
+            eyebrow="Get started"
+            title="Create your EduForge account"
+            footer={
+                <>
                     Already have an account?{" "}
-                    <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    <Link href="/login" className="text-accent hover:underline">
                         Sign in
                     </Link>
-                </p>
-            </div>
-        </div>
+                </>
+            }
+        >
+            {error && <Alert className="mb-4">{error}</Alert>}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <Label>I am a...</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                        {roles.map(({ value, label, hint, Icon }) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => setRole(value)}
+                                aria-pressed={role === value}
+                                className={cn(
+                                    "p-3 rounded-lg border text-left transition-colors",
+                                    role === value
+                                        ? "border-accent bg-accent/10 text-accent"
+                                        : "border-line-strong bg-surface-2 text-fg-muted hover:border-fg-faint",
+                                )}
+                            >
+                                <Icon className="size-5 mb-2" />
+                                <div className="text-sm font-semibold">{label}</div>
+                                <div className="text-[11px] font-mono text-fg-subtle">{hint}</div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+
+                <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+
+                <div>
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        required
+                        minLength={6}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </div>
+
+                <Button type="submit" size="lg" disabled={loading} className="w-full">
+                    {loading ? "Creating account..." : "Create Account"}
+                </Button>
+            </form>
+        </AuthShell>
     );
 }

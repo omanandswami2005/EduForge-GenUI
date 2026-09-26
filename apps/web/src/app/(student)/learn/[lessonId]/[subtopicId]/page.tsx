@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import { Button, Eyebrow, buttonVariants } from "@/components/ui";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useBKTStore } from "@/stores/bktStore";
 import { useGenUI } from "@/hooks/useGenUI";
@@ -22,7 +24,7 @@ export default function SubtopicLearnPage() {
     const [subtopic, setSubtopic] = useState<any>(null);
 
     const studentId = user?.uid || "";
-    const { components, isStreaming, error: genUIError, generate, meta } = useGenUI(studentId);
+    const { components, isStreaming, generate, meta } = useGenUI(studentId);
 
     useEffect(() => {
         if (!loading && token && lessonId && subtopicId) {
@@ -99,51 +101,48 @@ export default function SubtopicLearnPage() {
     const currentMCQ = mcqs[currentMCQIdx];
 
     return (
-        <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Breadcrumb / back link */}
-            <div className="mb-4">
+            <div className="mb-6">
                 <Link
                     href={`/learn/${lessonId}`}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-mono text-fg-subtle hover:text-accent transition-colors"
                 >
-                    ← Back to lesson
+                    <ArrowLeft className="size-3.5" />
+                    Back to lesson
                 </Link>
                 {subtopic && (
-                    <h2 className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
+                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-fg">
                         {subtopic.title}
-                    </h2>
+                    </h1>
                 )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: GenUI Visualization */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+                    <div className="bg-surface rounded-xl border border-line p-6">
                         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            <Eyebrow tone="accent" className="flex items-center gap-2">
+                                <Sparkles className="size-3.5" />
                                 AI Visualization
                                 {isStreaming && (
-                                    <span className="ml-2 text-sm font-normal text-blue-500 animate-pulse">
-                                        Generating...
+                                    <span className="normal-case tracking-normal text-fg-subtle animate-pulse">
+                                        generating...
                                     </span>
                                 )}
-                            </h3>
+                            </Eyebrow>
                             {/* Link to saved visualizations */}
                             {studentId && (
                                 <Link
                                     href={`/learn/${lessonId}/${subtopicId}/visualizations`}
-                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                    className="text-xs font-mono text-fg-subtle hover:text-accent transition-colors"
                                 >
                                     View saved visualizations →
                                 </Link>
                             )}
                         </div>
                         <GenUIMetaBadge meta={meta} />
-                        {genUIError && (
-                            <p className="text-sm text-red-500 dark:text-red-400 mb-3">
-                                Visualization unavailable: {genUIError}
-                            </p>
-                        )}
                         <GenUIRenderer components={components} />
                     </div>
 
@@ -159,11 +158,11 @@ export default function SubtopicLearnPage() {
 
                     {/* MCQ Section */}
                     {currentMCQ && (
-                        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+                        <div className="bg-surface rounded-xl border border-line p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                <Eyebrow>
                                     Question {currentMCQIdx + 1} of {mcqs.length}
-                                </h3>
+                                </Eyebrow>
                             </div>
                             <AdaptiveMCQ
                                 key={currentMCQ.id}
@@ -172,20 +171,16 @@ export default function SubtopicLearnPage() {
                                 bktUpdateResult={bktResult}
                             />
                             {bktResult && currentMCQIdx < mcqs.length - 1 && (
-                                <button
-                                    onClick={nextQuestion}
-                                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-                                >
-                                    Next Question →
-                                </button>
+                                <Button onClick={nextQuestion} className="mt-4">
+                                    Next Question
+                                    <ArrowRight className="size-4" />
+                                </Button>
                             )}
                             {bktResult && currentMCQIdx === mcqs.length - 1 && (
                                 <div className="mt-4 flex gap-3">
-                                    <Link
-                                        href={`/learn/${lessonId}`}
-                                        className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
-                                    >
-                                        ← Back to Lesson
+                                    <Link href={`/learn/${lessonId}`} className={buttonVariants()}>
+                                        <ArrowLeft className="size-4" />
+                                        Back to Lesson
                                     </Link>
                                 </div>
                             )}
@@ -196,7 +191,7 @@ export default function SubtopicLearnPage() {
                 {/* Right: Mastery HUD — sticky so it stays useful while the (much
                     taller) left column scrolls, instead of scrolling away and
                     leaving the sidebar empty. */}
-                <div className="lg:sticky lg:top-6 lg:self-start">
+                <div className="lg:sticky lg:top-24 lg:self-start">
                     <MasteryHUD
                         studentId={studentId}
                         lessonId={lessonId}

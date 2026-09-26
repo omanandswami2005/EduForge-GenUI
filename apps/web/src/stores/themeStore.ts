@@ -9,7 +9,9 @@ interface ThemeStore {
 }
 
 export const useThemeStore = create<ThemeStore>((set, get) => ({
-    theme: "light",
+    // Dark is the brand default; the inline script in app/layout.tsx applies
+    // the same rule before hydration so there's no flash.
+    theme: "dark",
 
     toggle: () => {
         const next = get().theme === "light" ? "dark" : "light";
@@ -20,8 +22,7 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
 
     init: () => {
         const stored = localStorage.getItem("eduforge-theme") as Theme | null;
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const theme = stored || (prefersDark ? "dark" : "light");
+        const theme: Theme = stored === "light" ? "light" : "dark";
         set({ theme });
         document.documentElement.classList.toggle("dark", theme === "dark");
     },

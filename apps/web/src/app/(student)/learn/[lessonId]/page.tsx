@@ -7,6 +7,9 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useBKTState } from "@/hooks/useBKTState";
 import { api } from "@/lib/api";
 import { ConceptDependencyGraph, UNLOCK_THRESHOLD } from "@/components/student/ConceptDependencyGraph";
+import { Lock } from "lucide-react";
+import { LoadingState, PageHeader, ProgressBar, cardClass } from "@/components/ui";
+import { masteryTone } from "@/lib/design";
 
 export default function LessonLearnPage() {
     const { lessonId } = useParams<{ lessonId: string }>();
@@ -49,9 +52,12 @@ export default function LessonLearnPage() {
     const byId = useMemo(() => new Map(subtopics.map((s: any) => [s.id, s])), [subtopics]);
 
     return (
-        <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{lesson?.title}</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">{lesson?.subject}</p>
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+            {lesson ? (
+                <PageHeader eyebrow={lesson.subject || "Lesson"} title={lesson.title} />
+            ) : (
+                <LoadingState label="Loading lesson..." />
+            )}
 
             {subtopics.length > 0 && (
                 <ConceptDependencyGraph subtopics={subtopics} masteryBySubtopic={masteryBySubtopic} />
@@ -72,41 +78,24 @@ export default function LessonLearnPage() {
 
                     const cardContent = (
                         <>
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-start justify-between mb-3">
                                 <div>
-                                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                        {locked && (
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-400 shrink-0">
-                                                <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3h-.75a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3h-.75v-3C17.25 3.99 14.76 1.5 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" />
-                                            </svg>
-                                        )}
-                                        {idx + 1}. {st.title}
+                                    <h3 className="font-semibold text-fg flex items-center gap-2">
+                                        {locked && <Lock className="size-4 text-fg-faint shrink-0" />}
+                                        <span className="font-mono text-fg-faint">{String(idx + 1).padStart(2, "0")}</span>
+                                        {st.title}
                                     </h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{st.description}</p>
+                                    <p className="text-sm text-fg-subtle mt-1">{st.description}</p>
                                     {locked && (
-                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
+                                        <p className="text-xs text-warning mt-1.5">
                                             Complete {unmetPrereqs.map((p: any) => p.title).join(", ")} first
                                             (reach {Math.round(UNLOCK_THRESHOLD * 100)}% mastery)
                                         </p>
                                     )}
                                 </div>
-                                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 shrink-0 ml-2">{masteryPct}%</span>
+                                <span className="text-sm font-mono font-medium text-fg-muted shrink-0 ml-2">{masteryPct}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div
-                                    className={`h-2 rounded-full transition-all duration-500 ${locked
-                                        ? "bg-gray-400 dark:bg-gray-600"
-                                        : mastery >= 0.8
-                                            ? "bg-green-500"
-                                            : mastery >= 0.5
-                                                ? "bg-blue-500"
-                                                : mastery >= 0.3
-                                                    ? "bg-yellow-500"
-                                                    : "bg-red-400"
-                                        }`}
-                                    style={{ width: `${masteryPct}%` }}
-                                />
-                            </div>
+                            <ProgressBar value={masteryPct} tone={locked ? "neutral" : masteryTone(mastery)} />
                         </>
                     );
 
@@ -114,7 +103,7 @@ export default function LessonLearnPage() {
                         return (
                             <div
                                 key={st.id || idx}
-                                className="block bg-gray-50 dark:bg-gray-950 rounded-lg border border-gray-200 dark:border-gray-800 p-5 cursor-not-allowed opacity-75"
+                                className="block bg-surface-2/50 rounded-xl border border-dashed border-line-strong p-5 cursor-not-allowed opacity-75"
                                 title={`Locked — complete ${unmetPrereqs.map((p: any) => p.title).join(", ")} first`}
                             >
                                 {cardContent}
@@ -126,7 +115,7 @@ export default function LessonLearnPage() {
                         <Link
                             key={st.id || idx}
                             href={`/learn/${lessonId}/${st.id}`}
-                            className="block bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5 hover:shadow-md transition-shadow"
+                            className={cardClass(true, "p-5")}
                         >
                             {cardContent}
                         </Link>

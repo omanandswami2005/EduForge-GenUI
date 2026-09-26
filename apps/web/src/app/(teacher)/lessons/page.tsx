@@ -1,23 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Plus, Search, Upload } from "lucide-react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { api } from "@/lib/api";
+import { LessonCard, type TeacherLesson } from "@/components/teacher/LessonCard";
+import { EmptyState, Input, LoadingState, PageHeader, buttonVariants } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
-interface Lesson {
-    id: string;
-    title: string;
-    subject: string;
-    status: string;
-    createdAt: string;
-    ingestion?: { step: string; progress: number; message: string; subtopicsFound?: number; mcqsGenerated?: number };
-}
+const FILTERS = ["all", "published", "processing", "failed", "draft"] as const;
+type Filter = (typeof FILTERS)[number];
 
+/**
+ * The lesson library — every lesson with search and status filters.
+ * Class-wide numbers live on the dashboard; per-lesson analytics on /lessons/[id].
+ */
 export default function TeacherLessonsPage() {
     const { token, loading } = useSessionStore();
-    const [lessons, setLessons] = useState<Lesson[]>([]);
+    const [lessons, setLessons] = useState<TeacherLesson[]>([]);
     const [loading2, setLoading2] = useState(true);
+    const [query, setQuery] = useState("");
+    const [filter, setFilter] = useState<Filter>("all");
 
     useEffect(() => {
         if (!loading && token) {
@@ -28,76 +32,87 @@ export default function TeacherLessonsPage() {
         }
     }, [loading, token]);
 
-    const statusColor = (status: string) => {
-        switch (status) {
-            case "published": return "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300";
-            case "processing": return "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300";
-            case "failed": return "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300";
-            default: return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
-        }
-    };
+    const counts = useMemo(() => {
+        const c: Record<Filter, number> = { all: lessons.length, published: 0, processing: 0, failed: 0, draft: 0 };
+        for (const l of lessons) if (l.status in c) c[l.status as Filter]++;
+        return c;
+    }, [lessons]);
+
+    const visible = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        return lessons
+            .filter((l) => filter === "all" || l.status === filter)
+            .filter((l) => !q || l.title.toLowerCase().includes(q) || l.subject?.toLowerCase().includes(q))
+            .sort((a, b) => a.title.localeCompare(b.title));
+    }, [lessons, filter, query]);
 
     return (
-        <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">All Lessons</h2>
-                <Link
-                    href="/lessons/new"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                    + New Lesson
-                </Link>
-            </div>
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+            <PageHeader
+                eyebrow="Library"
+                title="All Lessons"
+                description="Every lesson you've created. Open one for its heatmap, misconceptions, and topics."
+                actions={
+                    <Link href="/lessons/new" className={buttonVariants()}>
+                        <Plus className="size-4" />
+                        New Lesson
+                    </Link>
+                }
+            />
 
             {loading2 ? (
-                <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading lessons...</div>
+                <LoadingState label="Loading lessons..." />
             ) : lessons.length === 0 ? (
-                <div className="text-center py-12">
-                    <p className="text-gray-500 dark:text-gray-400 mb-4">No lessons yet. Upload your first presentation!</p>
-                    <Link href="/lessons/new" className="text-blue-600 dark:text-blue-400 hover:underline">
-                        Create Lesson
-                    </Link>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {lessons.map((lesson) => (
-                        <Link
-                            key={lesson.id}
-                            href={`/lessons/${lesson.id}`}
-                            className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-shadow"
-                        >
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{lesson.title}</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{lesson.subject}</p>
-                                </div>
-                                <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium ${statusColor(lesson.status)}`}>
-                                    {lesson.status}
-                                </span>
-                            </div>
-                            {lesson.ingestion && lesson.status === "processing" && (
-                                <div className="mt-4">
-                                    <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-1">
-                                        <span>{lesson.ingestion.message}</span>
-                                        <span>{lesson.ingestion.progress}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                        <div
-                                            className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                                            style={{ width: `${lesson.ingestion.progress}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                            {lesson.ingestion?.step === "complete" && (
-                                <div className="mt-3 flex gap-4 text-sm text-gray-500 dark:text-gray-400">
-                                    <span>{lesson.ingestion.subtopicsFound} subtopics</span>
-                                    <span>{lesson.ingestion.mcqsGenerated} MCQs</span>
-                                </div>
-                            )}
+                <EmptyState
+                    icon={<Upload className="size-5" />}
+                    title="No lessons yet"
+                    description="Upload a .pptx and EduForge will extract topics, generate MCQs, and calibrate the BKT model."
+                    action={
+                        <Link href="/lessons/new" className={buttonVariants()}>
+                            Create Lesson
                         </Link>
-                    ))}
-                </div>
+                    }
+                />
+            ) : (
+                <>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+                        <div className="relative sm:w-72">
+                            <Search className="size-4 text-fg-faint absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <Input
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Search title or subject..."
+                                className="pl-9"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1 overflow-x-auto">
+                            {FILTERS.filter((f) => f === "all" || counts[f] > 0).map((f) => (
+                                <button
+                                    key={f}
+                                    onClick={() => setFilter(f)}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-full border text-xs font-mono capitalize whitespace-nowrap transition-colors",
+                                        filter === f
+                                            ? "text-accent bg-accent/10 border-accent/30"
+                                            : "text-fg-subtle border-line hover:text-fg",
+                                    )}
+                                >
+                                    {f} <span className="text-fg-faint">{counts[f]}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {visible.length === 0 ? (
+                        <p className="text-sm text-fg-subtle py-10 text-center">No lessons match.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {visible.map((lesson) => (
+                                <LessonCard key={lesson.id} lesson={lesson} />
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
         </main>
     );

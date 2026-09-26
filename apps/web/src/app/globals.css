@@ -5,21 +5,105 @@
 /* KaTeX math rendering styles */
 @import "katex/dist/katex.min.css";
 
+/*
+ * EduForge design tokens — the single source of truth for color.
+ *
+ * Values are bare "R G B" channels so Tailwind can apply opacity
+ * (e.g. bg-accent/10). tailwind.config.js maps each token to a semantic
+ * class name; components never reference raw hex or gray-/blue- scales.
+ *
+ * Dark is the brand default (the landing page palette). Light is its
+ * green-tinted counterpart, toggled by the `dark` class on <html>.
+ */
 :root {
-    --foreground-rgb: 0, 0, 0;
-    --background-start-rgb: 250, 250, 250;
-    --background-end-rgb: 255, 255, 255;
+    /* Neutrals */
+    --canvas: 246 248 246;
+    --surface: 255 255 255;
+    --surface-2: 239 244 240;
+    --surface-3: 226 234 228;
+    --line: 220 229 222;
+    --line-strong: 195 209 198;
+    --fg: 12 26 16;
+    --fg-muted: 58 79 63;
+    --fg-subtle: 91 114 96;
+    --fg-faint: 122 142 125;
+
+    /* Brand */
+    --accent: 5 150 105;
+    --accent-hover: 4 120 87;
+    --accent-fg: 255 255 255;
+
+    /* Tones — readable as text on surface, usable as solids and (with alpha) tints */
+    --success: 5 150 105;
+    --info: 2 132 199;
+    --warning: 180 83 9;
+    --danger: 220 38 38;
+    --violet: 124 58 237;
+
+    /* Landing-page backdrop grid */
+    --grid-line: 220 229 222;
+
+    color-scheme: light;
 }
 
 html.dark {
-    --foreground-rgb: 229, 231, 235;
-    --background-start-rgb: 3, 7, 18;
-    --background-end-rgb: 3, 7, 18;
+    --canvas: 9 13 10;
+    --surface: 14 21 16;
+    --surface-2: 18 27 20;
+    --surface-3: 23 37 27;
+    --line: 28 44 32;
+    --line-strong: 42 63 47;
+    --fg: 225 239 227;
+    --fg-muted: 167 186 169;
+    --fg-subtle: 127 153 131;
+    --fg-faint: 90 116 94;
+
+    --accent: 52 211 153;
+    --accent-hover: 46 184 133;
+    --accent-fg: 7 19 11;
+
+    --success: 52 211 153;
+    --info: 56 189 248;
+    --warning: 251 191 36;
+    --danger: 248 113 113;
+    --violet: 167 139 250;
+
+    --grid-line: 19 30 22;
+
     color-scheme: dark;
 }
 
-body {
-    color: rgb(var(--foreground-rgb));
-    background: rgb(var(--background-end-rgb));
-    font-family: system-ui, -apple-system, sans-serif;
+@layer base {
+    body {
+        @apply bg-canvas text-fg font-sans antialiased;
+    }
+
+    ::selection {
+        background: rgb(var(--accent) / 0.25);
+        color: rgb(var(--fg));
+    }
+
+    :focus-visible {
+        outline: 2px solid rgb(var(--accent) / 0.6);
+        outline-offset: 2px;
+    }
+
+    input[type="range"] {
+        accent-color: rgb(var(--accent));
+    }
+}
+
+@layer components {
+    /* Mono uppercase section label — the landing page's "eyebrow" style */
+    .eyebrow {
+        @apply font-mono text-[11px] uppercase tracking-wider text-fg-faint;
+    }
+
+    /* Subtle blueprint grid used behind hero areas */
+    .bg-grid {
+        background-image: linear-gradient(to right, rgb(var(--grid-line)) 1px, transparent 1px),
+            linear-gradient(to bottom, rgb(var(--grid-line)) 1px, transparent 1px);
+        background-size: 4rem 4rem;
+        mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 70%, transparent 100%);
+    }
 }

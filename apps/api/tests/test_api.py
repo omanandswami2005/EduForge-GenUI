@@ -73,3 +73,23 @@ class TestTimingHeader:
     def test_response_has_timing_header(self):
         resp = client.get("/health")
         assert "X-Process-Time" in resp.headers
+
+
+class TestTeacherOverviewRoute:
+    def test_teacher_overview_requires_auth(self):
+        resp = client.get("/analytics/teacher-overview")
+        assert resp.status_code == 401 or resp.status_code == 403
+
+
+class TestJoinCodeRoutes:
+    def test_join_preview_requires_auth(self):
+        resp = client.get("/students/join/FMA234")
+        assert resp.status_code == 401 or resp.status_code == 403
+
+    def test_join_requires_auth(self):
+        resp = client.post("/students/join", json={"code": "FMA234"})
+        assert resp.status_code == 401 or resp.status_code == 403
+
+    def test_teacher_join_code_requires_auth(self):
+        resp = client.get("/lessons/some-lesson/join-code")
+        assert resp.status_code == 401 or resp.status_code == 403

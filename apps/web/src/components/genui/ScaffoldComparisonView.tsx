@@ -46,49 +46,44 @@ export function ScaffoldComparisonView(props: ScaffoldComparisonViewProps) {
     };
 
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+        <div className="bg-surface rounded-xl border border-line p-6">
             <button
                 onClick={() => (open ? setOpen(false) : handleOpen())}
                 className="flex items-center justify-between w-full text-left"
             >
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div className="eyebrow text-accent mb-1">Ablation View</div>
+                    <h3 className="text-base font-semibold text-fg">
                         Compare mastery levels
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    <p className="text-sm text-fg-subtle mt-0.5">
                         See how content for this concept changes from novice to expert
                     </p>
                 </div>
-                <span className="text-gray-400 text-sm">{open ? "Hide ▲" : "Show ▼"}</span>
+                <span className="text-fg-subtle text-xs font-mono px-2.5 py-1 rounded-full border border-line hover:text-fg">{open ? "Hide ▲" : "Show ▼"}</span>
             </button>
 
             {open && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-                    <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+                    <div className="border border-line bg-canvas/40 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium text-gray-900 dark:text-white">Novice view</h4>
+                            <h4 className="font-medium text-fg">Novice view</h4>
                             {novice.isStreaming && (
-                                <span className="text-xs text-blue-500 animate-pulse">Generating...</span>
+                                <span className="text-xs font-mono text-accent animate-pulse">generating...</span>
                             )}
                         </div>
                         <GenUIMetaBadge meta={novice.meta} />
-                        {novice.error && (
-                            <p className="text-sm text-red-500 dark:text-red-400">{novice.error}</p>
-                        )}
                         <GenUIRenderer components={novice.components} />
                     </div>
 
-                    <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+                    <div className="border border-line bg-canvas/40 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium text-gray-900 dark:text-white">Mastered view</h4>
+                            <h4 className="font-medium text-fg">Mastered view</h4>
                             {mastered.isStreaming && (
-                                <span className="text-xs text-blue-500 animate-pulse">Generating...</span>
+                                <span className="text-xs font-mono text-accent animate-pulse">generating...</span>
                             )}
                         </div>
                         <GenUIMetaBadge meta={mastered.meta} />
-                        {mastered.error && (
-                            <p className="text-sm text-red-500 dark:text-red-400">{mastered.error}</p>
-                        )}
                         <GenUIRenderer components={mastered.components} />
                     </div>
                 </div>

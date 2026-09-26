@@ -22,11 +22,19 @@ export interface GraphSubtopic {
  * adequate understanding of a prerequisite is enough to move forward. */
 export const UNLOCK_THRESHOLD = 0.4;
 
+// ReactFlow takes inline styles, so read the design tokens as CSS variables
+// directly — nodes follow the light/dark theme like everything else.
+const cssTone = (token: string) => ({
+    bg: `rgb(var(--${token}) / 0.12)`,
+    border: `rgb(var(--${token}))`,
+    text: `rgb(var(--${token}))`,
+});
+
 function nodeColor(mastery: number, locked: boolean) {
-    if (locked) return { bg: "#e5e7eb", border: "#9ca3af", text: "#4b5563" }; // gray — locked
-    if (mastery >= 0.95) return { bg: "#dcfce7", border: "#22c55e", text: "#166534" }; // green — mastered
-    if (mastery > UNLOCK_THRESHOLD) return { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af" }; // blue — in progress
-    return { bg: "#fef9c3", border: "#eab308", text: "#854d0e" }; // yellow — unlocked, just started
+    if (locked) return { bg: "rgb(var(--surface-2))", border: "rgb(var(--line-strong))", text: "rgb(var(--fg-subtle))" };
+    if (mastery >= 0.95) return cssTone("success"); // mastered
+    if (mastery > UNLOCK_THRESHOLD) return cssTone("info"); // in progress
+    return cssTone("warning"); // unlocked, just started
 }
 
 /**
@@ -81,11 +89,12 @@ export function ConceptDependencyGraph({
                     targetPosition: Position.Left,
                     style: {
                         background: colors.bg,
-                        border: `2px solid ${colors.border}`,
+                        border: `1.5px solid ${colors.border}`,
                         color: colors.text,
-                        borderRadius: 8,
+                        borderRadius: 10,
                         padding: 8,
                         fontSize: 12,
+                        fontFamily: "var(--font-mono, ui-monospace, monospace)",
                         width: 200,
                         whiteSpace: "pre-line" as const,
                     },
@@ -100,7 +109,7 @@ export function ConceptDependencyGraph({
                     source: prereqId,
                     target: st.id,
                     animated: (masteryBySubtopic[prereqId] ?? 0) < UNLOCK_THRESHOLD,
-                    style: { stroke: "#9ca3af" },
+                    style: { stroke: "rgb(var(--line-strong))" },
                 }))
         );
 
@@ -111,7 +120,7 @@ export function ConceptDependencyGraph({
 
     return (
         <div
-            className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6"
+            className="bg-surface rounded-xl border border-line p-4 mb-6"
             style={{ height }}
         >
             <ReactFlowProvider>
@@ -124,7 +133,7 @@ export function ConceptDependencyGraph({
                     elementsSelectable={false}
                     proOptions={{ hideAttribution: true }}
                 >
-                    <Background gap={16} size={1} />
+                    <Background gap={16} size={1} color="rgb(var(--line-strong))" />
                 </ReactFlow>
             </ReactFlowProvider>
         </div>

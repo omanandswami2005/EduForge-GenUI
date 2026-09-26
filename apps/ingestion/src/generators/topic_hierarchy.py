@@ -69,6 +69,9 @@ Rules:
         response = await self.client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}],
+            # Groq's default completion cap (3072) truncates gpt-oss mid-JSON
+            # once its reasoning tokens are counted — a 15-MCQ bank needs more.
+            max_tokens=16384,
         )
         text = response.choices[0].message.content.strip()
 

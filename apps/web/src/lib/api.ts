@@ -63,6 +63,28 @@ export const api = {
             body: JSON.stringify({ lessonId }),
         }),
 
+    // Join codes
+    previewJoinCode: (token: string, code: string) =>
+        apiFetch<JoinPreview>(`/students/join/${encodeURIComponent(code)}`, { token }),
+
+    joinWithCode: (token: string, code: string) =>
+        apiFetch<{ lessonId: string; alreadyEnrolled: boolean }>("/students/join", {
+            method: "POST", token,
+            body: JSON.stringify({ code }),
+        }),
+
+    getJoinCode: (token: string, lessonId: string) =>
+        apiFetch<JoinCodeInfo>(`/lessons/${lessonId}/join-code`, { token }),
+
+    regenerateJoinCode: (token: string, lessonId: string) =>
+        apiFetch<JoinCodeInfo>(`/lessons/${lessonId}/join-code/regenerate`, { method: "POST", token }),
+
+    setJoinEnabled: (token: string, lessonId: string, enabled: boolean) =>
+        apiFetch<JoinCodeInfo>(`/lessons/${lessonId}/join-code`, {
+            method: "PATCH", token,
+            body: JSON.stringify({ enabled }),
+        }),
+
     getStudentLessons: (token: string, studentId: string) =>
         apiFetch<any[]>(`/students/${studentId}/lessons`, { token }),
 
@@ -82,4 +104,56 @@ export const api = {
 
     getMisconceptionInsights: (token: string, lessonId: string) =>
         apiFetch<any>(`/analytics/misconceptions/${lessonId}`, { token }),
+
+    getTeacherOverview: (token: string) =>
+        apiFetch<TeacherOverview>("/analytics/teacher-overview", { token }),
 };
+
+/** Shape of GET /analytics/teacher-overview (apps/api/src/services/teacher_overview.py) */
+export interface TeacherOverview {
+    totals: {
+        lessons: number;
+        published: number;
+        processing: number;
+        failed: number;
+        draft: number;
+        students: number;
+        subtopics: number;
+        mcqs: number;
+        responses: number;
+        accuracy: number | null;
+        avgMastery: number | null;
+        conceptStates: number;
+    };
+    masteryDistribution: Record<"struggling" | "developing" | "proficient" | "mastered", number>;
+    lessons: {
+        id: string;
+        title: string;
+        subject: string;
+        status: string;
+        ingestion: { step: string; progress: number; message: string } | null;
+        students: number;
+        avgMastery: number | null;
+        responses: number;
+        accuracy: number | null;
+    }[];
+    strugglingStudents: { id: string; name: string; lessonId: string; lessonTitle: string; avgMastery: number; conceptsTracked: number }[];
+    weakConcepts: { conceptId: string; lessonId: string; lessonTitle: string; avgMastery: number; students: number }[];
+    topMisconceptions: { conceptId: string; text: string; count: number; lessonId: string; lessonTitle: string }[];
+}
+
+export interface JoinPreview {
+    lessonId: string;
+    title: string;
+    subject: string;
+    subtopicCount: number | null;
+    teacherName: string | null;
+    alreadyEnrolled: boolean;
+}
+
+export interface JoinCodeInfo {
+    code: string;
+    /** "K7M-Q2P" */
+    display: string;
+    enabled: boolean;
+}

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSessionStore } from "@/stores/sessionStore";
+import { AuthShell } from "@/components/shared/AuthShell";
+import { Alert, Button, Input, Label } from "@/components/ui";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -33,61 +35,49 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-dvh flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-            <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-8">
-                <h1 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">
-                    Sign in to <span className="text-blue-600 dark:text-blue-400">EduForge</span>
-                </h1>
-
-                {error && (
-                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400">
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-                        <input
-                            id="email"
-                            type="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="you@example.com"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="••••••••"
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                    >
-                        {loading ? "Signing in..." : "Sign In"}
-                    </button>
-                </form>
-
-                <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <AuthShell
+            eyebrow="Welcome back"
+            title="Sign in to EduForge"
+            footer={
+                <>
                     Don&apos;t have an account?{" "}
-                    <Link href="/register" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    <Link href="/register" className="text-accent hover:underline">
                         Register
                     </Link>
-                </p>
-            </div>
-        </div>
+                </>
+            }
+        >
+            {error && <Alert className="mb-4">{error}</Alert>}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                    />
+                </div>
+
+                <div>
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                    />
+                </div>
+
+                <Button type="submit" size="lg" disabled={loading} className="w-full">
+                    {loading ? "Signing in..." : "Sign In"}
+                </Button>
+            </form>
+        </AuthShell>
     );
 }

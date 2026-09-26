@@ -45,25 +45,25 @@ export function MisconceptionInsights({ token, lessonId }: { token: string; less
 
     if (loading) {
         return (
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-                <p className="text-sm text-gray-400 dark:text-gray-500">Loading misconception insights...</p>
+            <div className="bg-surface rounded-xl border border-line p-6">
+                <p className="text-sm text-fg-faint">Loading misconception insights...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-                <p className="text-sm text-red-500 dark:text-red-400">Misconception insights unavailable: {error}</p>
+            <div className="bg-surface rounded-xl border border-line p-6">
+                <p className="text-sm text-danger">Misconception insights unavailable: {error}</p>
             </div>
         );
     }
 
     if (!data || data.byConcept.length === 0) {
         return (
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Common Misconceptions</h3>
-                <p className="text-sm text-gray-400 dark:text-gray-500">
+            <div className="bg-surface rounded-xl border border-line p-6">
+                <h3 className="text-base font-semibold text-fg mb-1">Common Misconceptions</h3>
+                <p className="text-sm text-fg-faint">
                     No flagged misconceptions yet — fills in as students answer questions wrong.
                 </p>
             </div>
@@ -71,10 +71,10 @@ export function MisconceptionInsights({ token, lessonId }: { token: string; less
     }
 
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+        <div className="bg-surface rounded-xl border border-line p-6">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Common Misconceptions</h3>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                <h3 className="text-base font-semibold text-fg">Common Misconceptions</h3>
+                <span className="text-xs text-fg-subtle">
                     {data.wrongAnswers} wrong answers across {data.responsesAnalyzed} responses
                 </span>
             </div>
@@ -82,21 +82,21 @@ export function MisconceptionInsights({ token, lessonId }: { token: string; less
                 {data.byConcept.map((concept) => (
                     <div
                         key={concept.conceptId}
-                        className="border border-gray-100 dark:border-gray-800 rounded-lg p-4"
+                        className="border border-line rounded-lg p-4"
                     >
                         <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium text-gray-900 dark:text-white">{concept.conceptId}</h4>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300">
+                            <h4 className="font-medium text-fg">{concept.conceptId}</h4>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-warning/15 text-warning">
                                 {concept.totalFlagged} flagged
                             </span>
                         </div>
                         <ul className="space-y-2">
                             {concept.topMisconceptions.map((m) => (
                                 <li key={m.text} className="flex items-start gap-2 text-sm">
-                                    <span className="shrink-0 mt-0.5 px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs font-medium">
+                                    <span className="shrink-0 mt-0.5 px-1.5 py-0.5 rounded bg-danger/15 text-danger text-xs font-medium">
                                         {m.count}×
                                     </span>
-                                    <span className="text-gray-600 dark:text-gray-300">{m.text}</span>
+                                    <span className="text-fg-muted">{m.text}</span>
                                 </li>
                             ))}
                         </ul>

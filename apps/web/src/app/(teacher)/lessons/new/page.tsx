@@ -4,6 +4,8 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/stores/sessionStore";
 import { api } from "@/lib/api";
+import { FileUp, FileCheck2 } from "lucide-react";
+import { Alert, Button, Card, Input, Label, PageHeader, Spinner } from "@/components/ui";
 
 export default function NewLessonPage() {
     const { token } = useSessionStore();
@@ -36,11 +38,12 @@ export default function NewLessonPage() {
 
             // 2. Upload file to GCS
             setStatus("Uploading presentation...");
-            await fetch(uploadUrl, {
+            const uploadRes = await fetch(uploadUrl, {
                 method: "PUT",
                 headers: { "Content-Type": file.type || "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
                 body: file,
             });
+            if (!uploadRes.ok) throw new Error(`Upload failed (${uploadRes.status})`);
 
             // 3. Trigger ingestion
             setStatus("Starting AI analysis...");
@@ -56,89 +59,86 @@ export default function NewLessonPage() {
     };
 
     return (
-        <main className="max-w-2xl mx-auto px-6 py-12">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upload a Lesson</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-8">
-                Upload a PowerPoint presentation. Our AI will automatically extract topics,
-                generate assessments, and calibrate the knowledge model.
-            </p>
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
+            <PageHeader
+                eyebrow="Ingestion Pipeline"
+                title="Upload a Lesson"
+                description="Upload a PowerPoint presentation. EduForge extracts topics, generates tiered MCQs, and calibrates the knowledge model."
+            />
 
-            {error && (
-                <div className="mb-6 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
-                    {error}
-                </div>
-            )}
+            {error && <Alert className="mb-6">{error}</Alert>}
 
-            <form onSubmit={handleUpload} className="space-y-6">
-                <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lesson Title</label>
-                    <input
-                        id="title"
-                        type="text"
-                        required
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g., Newton's Laws of Motion"
-                    />
-                </div>
-
-                <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject</label>
-                    <input
-                        id="subject"
-                        type="text"
-                        required
-                        value={subject}
-                        onChange={(e) => setSubject(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g., Physics"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Presentation File</label>
-                    <div
-                        className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
-                        onClick={() => fileRef.current?.click()}
-                    >
-                        <input
-                            ref={fileRef}
-                            type="file"
-                            accept=".pptx"
-                            className="hidden"
-                            onChange={(e) => setFile(e.target.files?.[0] || null)}
-                        />
-                        {file ? (
-                            <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    {(file.size / 1024 / 1024).toFixed(1)} MB
-                                </p>
-                            </div>
-                        ) : (
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Click to select a .pptx file</p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Max 50MB</p>
-                            </div>
-                        )}
+            <Card className="p-6">
+                <form onSubmit={handleUpload} className="space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="title">Lesson Title</Label>
+                            <Input
+                                id="title"
+                                type="text"
+                                required
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="e.g., Newton's Laws of Motion"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="subject">Subject</Label>
+                            <Input
+                                id="subject"
+                                type="text"
+                                required
+                                value={subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                                placeholder="e.g., Physics"
+                            />
+                        </div>
                     </div>
-                </div>
 
-                {status && (
-                    <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300">
-                        {status}
+                    <div>
+                        <Label>Presentation File</Label>
+                        <button
+                            type="button"
+                            className="w-full border-2 border-dashed border-line-strong bg-surface-2/50 rounded-lg p-8 text-center hover:border-accent hover:bg-accent/5 transition-colors"
+                            onClick={() => fileRef.current?.click()}
+                        >
+                            <input
+                                ref={fileRef}
+                                type="file"
+                                accept=".pptx"
+                                className="hidden"
+                                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                            />
+                            {file ? (
+                                <div className="flex flex-col items-center">
+                                    <FileCheck2 className="size-6 text-accent mb-2" />
+                                    <p className="text-sm font-medium text-fg">{file.name}</p>
+                                    <p className="text-xs font-mono text-fg-subtle mt-1">
+                                        {(file.size / 1024 / 1024).toFixed(1)} MB
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center">
+                                    <FileUp className="size-6 text-fg-faint mb-2" />
+                                    <p className="text-sm text-fg-muted">Click to select a .pptx file</p>
+                                    <p className="text-xs font-mono text-fg-faint mt-1">Max 50MB</p>
+                                </div>
+                            )}
+                        </button>
                     </div>
-                )}
 
-                <button
-                    type="submit"
-                    disabled={uploading || !file}
-                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                    {uploading ? "Processing..." : "Upload & Analyze"}
-                </button>
-            </form>
+                    {status && (
+                        <Alert tone="accent" className="flex items-center gap-2 font-mono text-xs">
+                            {uploading && <Spinner className="size-3.5" />}
+                            {status}
+                        </Alert>
+                    )}
+
+                    <Button type="submit" size="lg" disabled={uploading || !file} className="w-full">
+                        {uploading ? "Processing..." : "Upload & Analyze"}
+                    </Button>
+                </form>
+            </Card>
         </main>
     );
 }

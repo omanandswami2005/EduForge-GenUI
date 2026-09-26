@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Component, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MathText } from "./MathText";
 
@@ -26,15 +26,15 @@ const scaleIn = {
 export function GenUIRenderer({ components }: { components: GenUIComponent[] }) {
     if (components.length === 0) {
         return (
-            <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+            <div className="text-center py-8 text-fg-faint">
                 <motion.div
                     animate={{ opacity: [0.4, 1, 0.4] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
                 >
                     <div className="inline-flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                        <span className="w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: "300ms" }} />
                     </div>
                     <p className="mt-2">Generating visualization...</p>
                 </motion.div>
@@ -53,15 +53,25 @@ export function GenUIRenderer({ components }: { components: GenUIComponent[] }) 
     );
 }
 
-function ComponentWrapper({ component: comp }: { component: GenUIComponent }) {
-    try {
-        return renderComponent(comp);
-    } catch {
-        return (
-            <div className="p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
-                Failed to render component: {comp.component}
-            </div>
-        );
+/**
+ * Isolates each generated component: one malformed component (bad props from
+ * the model) is dropped silently instead of taking down the whole view or
+ * showing the student an error.
+ */
+class ComponentWrapper extends Component<{ component: GenUIComponent }, { failed: boolean }> {
+    state = { failed: false };
+
+    static getDerivedStateFromError() {
+        return { failed: true };
+    }
+
+    componentDidCatch(error: unknown) {
+        // eslint-disable-next-line no-console
+        console.warn(`[genui] dropped ${this.props.component.component} that failed to render`, error);
+    }
+
+    render() {
+        return this.state.failed ? null : renderComponent(this.props.component);
     }
 }
 
@@ -84,7 +94,7 @@ function renderComponent({ component, props }: GenUIComponent) {
         case "ExpertSummary":
             return <ExpertSummaryView {...(props as any)} />;
         default:
-            return <div className="text-sm text-gray-400 dark:text-gray-500">Unknown component: {component}</div>;
+            return null; // unknown/partial component type — skip it
     }
 }
 
@@ -94,7 +104,7 @@ function StepByStepView({ concept, steps, summary }: any) {
 
     return (
         <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900 dark:text-white">
+            <h4 className="font-semibold text-fg">
                 <MathText inline>{concept}</MathText>
             </h4>
 
@@ -110,8 +120,8 @@ function StepByStepView({ concept, steps, summary }: any) {
                         >
                             <motion.div
                                 className={`h-1.5 w-full rounded-full transition-colors ${i <= activeStep
-                                        ? "bg-blue-500 dark:bg-blue-400"
-                                        : "bg-gray-200 dark:bg-gray-700 group-hover:bg-blue-200 dark:group-hover:bg-blue-900"
+                                        ? "bg-accent"
+                                        : "bg-surface-3 group-hover:bg-accent/20"
                                     }`}
                                 layoutId={undefined}
                                 initial={false}
@@ -120,7 +130,7 @@ function StepByStepView({ concept, steps, summary }: any) {
                             />
                         </button>
                     ))}
-                    <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 whitespace-nowrap">
+                    <span className="text-xs text-fg-faint ml-2 whitespace-nowrap">
                         {activeStep + 1}/{total}
                     </span>
                 </div>
@@ -140,16 +150,16 @@ function StepByStepView({ concept, steps, summary }: any) {
                         transition={{ delay: idx * 0.06, duration: 0.3 }}
                         onClick={() => setActiveStep(idx)}
                         className={`flex gap-3 cursor-pointer rounded-lg p-2 -ml-2 transition-colors ${idx === activeStep
-                                ? "bg-blue-50/70 dark:bg-blue-950/40"
-                                : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                                ? "bg-accent/10"
+                                : "hover:bg-surface-2"
                             }`}
                     >
                         <motion.span
                             className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${idx < activeStep
-                                    ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
+                                    ? "bg-success/15 text-success"
                                     : idx === activeStep
-                                        ? "bg-blue-500 dark:bg-blue-600 text-white"
-                                        : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
+                                        ? "bg-accent text-accent-fg"
+                                        : "bg-surface-2 text-fg-faint"
                                 }`}
                             animate={idx === activeStep ? { scale: [1, 1.15, 1] } : {}}
                             transition={{ duration: 0.3 }}
@@ -157,7 +167,7 @@ function StepByStepView({ concept, steps, summary }: any) {
                             {idx < activeStep ? "✓" : (step.number ?? idx + 1)}
                         </motion.span>
                         <div className="flex-1">
-                            <p className="font-medium text-gray-800 dark:text-gray-100">
+                            <p className="font-medium text-fg">
                                 <MathText inline>{step.title}</MathText>
                             </p>
                             <AnimatePresence initial={false}>
@@ -169,11 +179,11 @@ function StepByStepView({ concept, steps, summary }: any) {
                                         transition={{ duration: 0.25 }}
                                         className="overflow-hidden"
                                     >
-                                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                        <div className="text-sm text-fg-muted mt-1">
                                             <MathText>{step.explanation}</MathText>
                                         </div>
                                         {step.example && (
-                                            <div className="text-sm text-blue-600 dark:text-blue-400 mt-2 italic border-l-2 border-blue-300 dark:border-blue-700 pl-3">
+                                            <div className="text-sm text-fg-muted mt-2 italic border-l-2 border-accent/40 pl-3">
                                                 {"Example: "}<MathText inline>{step.example}</MathText>
                                             </div>
                                         )}
@@ -191,14 +201,14 @@ function StepByStepView({ concept, steps, summary }: any) {
                     <button
                         onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
                         disabled={activeStep === 0}
-                        className="px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="px-3 py-1.5 text-xs rounded-md bg-surface-2 text-fg-muted hover:bg-surface-3 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                         ← Prev
                     </button>
                     <button
                         onClick={() => setActiveStep(Math.min(total - 1, activeStep + 1))}
                         disabled={activeStep === total - 1}
-                        className="px-3 py-1.5 text-xs rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="px-3 py-1.5 text-xs rounded-md bg-accent/15 text-accent hover:bg-accent/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                         Next →
                     </button>
@@ -210,7 +220,7 @@ function StepByStepView({ concept, steps, summary }: any) {
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: activeStep === total - 1 ? 1 : 0.5 }}
-                    className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg text-sm text-blue-800 dark:text-blue-300 border border-blue-100 dark:border-blue-900"
+                    className="p-3 bg-accent/10 rounded-lg text-sm text-fg-muted border border-accent/30 [&_strong]:text-accent"
                 >
                     <strong>{"Summary: "}</strong><MathText inline>{summary}</MathText>
                 </motion.div>
@@ -223,25 +233,25 @@ function HintCardView({ hint_level, hint_text, follow_up_question }: any) {
     const [revealed, setRevealed] = useState(false);
     const colorMap = {
         gentle: {
-            bg: "bg-green-50 dark:bg-green-950",
-            border: "border-green-200 dark:border-green-800",
-            text: "text-green-800 dark:text-green-300",
-            accent: "bg-green-500",
-            btn: "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200",
+            bg: "bg-success/10",
+            border: "border-success/30",
+            text: "text-success",
+            accent: "bg-success",
+            btn: "bg-success/15 text-success hover:bg-success/20",
         },
         moderate: {
-            bg: "bg-yellow-50 dark:bg-yellow-950",
-            border: "border-yellow-200 dark:border-yellow-800",
-            text: "text-yellow-800 dark:text-yellow-300",
-            accent: "bg-yellow-500",
-            btn: "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-200",
+            bg: "bg-info/10",
+            border: "border-info/30",
+            text: "text-info",
+            accent: "bg-info",
+            btn: "bg-info/15 text-info hover:bg-info/20",
         },
         direct: {
-            bg: "bg-orange-50 dark:bg-orange-950",
-            border: "border-orange-200 dark:border-orange-800",
-            text: "text-orange-800 dark:text-orange-300",
-            accent: "bg-orange-500",
-            btn: "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 hover:bg-orange-200",
+            bg: "bg-warning/10",
+            border: "border-warning/30",
+            text: "text-warning",
+            accent: "bg-warning",
+            btn: "bg-warning/15 text-warning hover:bg-warning/20",
         },
     };
     const c = colorMap[hint_level as keyof typeof colorMap] || colorMap.moderate;
@@ -310,24 +320,24 @@ function FormulaCardView({ formula, variables, example }: any) {
 
     return (
         <motion.div
-            className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+            className="rounded-lg border border-line overflow-hidden"
             {...scaleIn}
         >
             {/* Formula display */}
-            <div className="p-5 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 text-center">
+            <div className="p-5 bg-gradient-to-br from-surface-2 to-surface text-center">
                 <motion.div
                     className="py-2 overflow-x-auto"
                     animate={highlightedVar ? { scale: 1.02 } : { scale: 1 }}
                     transition={{ type: "spring", stiffness: 300 }}
                 >
-                    <MathText className="text-gray-900 dark:text-white text-lg">{formula}</MathText>
+                    <MathText className="text-fg text-lg">{formula}</MathText>
                 </motion.div>
             </div>
 
             {/* Interactive variable list */}
             {variables && (
-                <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
+                <div className="px-4 py-3 border-t border-line bg-surface">
+                    <p className="eyebrow mb-2">
                         Variables — click to highlight
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -338,21 +348,21 @@ function FormulaCardView({ formula, variables, example }: any) {
                                     highlightedVar === v.symbol ? null : v.symbol
                                 )}
                                 className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm border transition-all ${highlightedVar === v.symbol
-                                        ? "bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 ring-2 ring-blue-200 dark:ring-blue-800"
-                                        : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750"
+                                        ? "bg-accent/15 border-accent/30 ring-2 ring-accent/30"
+                                        : "bg-surface-2 border-line hover:bg-surface-3"
                                     }`}
                                 whileHover={{ scale: 1.03 }}
                                 whileTap={{ scale: 0.97 }}
                             >
-                                <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">
+                                <span className="font-mono font-semibold text-fg-muted">
                                     <MathText inline>{v.symbol}</MathText>
                                 </span>
-                                <span className="text-gray-400 dark:text-gray-500">=</span>
-                                <span className="text-gray-600 dark:text-gray-400">
+                                <span className="text-fg-faint">=</span>
+                                <span className="text-fg-muted">
                                     <MathText inline>{v.name}</MathText>
                                 </span>
                                 {v.unit && (
-                                    <span className="text-gray-400 dark:text-gray-500 text-xs">
+                                    <span className="text-fg-faint text-xs">
                                         {"("}<MathText inline>{v.unit}</MathText>{")"}
                                     </span>
                                 )}
@@ -364,10 +374,10 @@ function FormulaCardView({ formula, variables, example }: any) {
 
             {/* Interactive example toggle */}
             {example && (
-                <div className="border-t border-gray-100 dark:border-gray-800">
+                <div className="border-t border-line">
                     <button
                         onClick={() => setShowExample(!showExample)}
-                        className="w-full px-4 py-2.5 text-left text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors flex items-center justify-between"
+                        className="w-full px-4 py-2.5 text-left text-sm font-medium text-accent hover:bg-accent/10 transition-colors flex items-center justify-between"
                     >
                         <span>{showExample ? "Hide" : "Show"} worked example</span>
                         <motion.span
@@ -398,7 +408,7 @@ function FormulaCardView({ formula, variables, example }: any) {
                                                 <motion.span
                                                     key={key}
                                                     variants={fadeUp}
-                                                    className="px-2 py-1 bg-blue-50 dark:bg-blue-950 rounded text-sm text-gray-700 dark:text-gray-300 border border-blue-100 dark:border-blue-900"
+                                                    className="px-2 py-1 bg-accent/10 rounded text-sm text-fg-muted border border-accent/30"
                                                 >
                                                     <MathText inline>{`${key} = ${String(value)}`}</MathText>
                                                 </motion.span>
@@ -410,9 +420,9 @@ function FormulaCardView({ formula, variables, example }: any) {
                                             initial={{ opacity: 0, x: -8 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: 0.3 }}
-                                            className="flex items-center gap-2 font-medium text-gray-900 dark:text-white text-sm p-2 bg-green-50 dark:bg-green-950 rounded-md border border-green-100 dark:border-green-900"
+                                            className="flex items-center gap-2 font-medium text-fg text-sm p-2 bg-success/10 rounded-md border border-success/30"
                                         >
-                                            <span className="text-green-600">→</span>
+                                            <span className="text-success">→</span>
                                             <MathText inline>{example.result}</MathText>
                                         </motion.div>
                                     )}
@@ -451,15 +461,15 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
 
     return (
         <motion.div
-            className="p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800"
+            className="p-4 bg-surface rounded-lg border border-line"
             {...scaleIn}
         >
             <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">{diagramIcons[diagram_type] ?? "◈"}</span>
-                <h4 className="font-semibold text-gray-900 dark:text-white">
+                <h4 className="font-semibold text-fg">
                     <MathText inline>{title}</MathText>
                 </h4>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-surface-2 text-fg-subtle">
                     {diagram_type?.replace("_", " ")}
                 </span>
             </div>
@@ -477,10 +487,10 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
                                 key={el.id ?? `elem-${idx}`}
                                 onClick={() => setSelectedNode(isSelected ? null : el.id)}
                                 className={`text-left px-3 py-2 rounded-lg text-sm border-2 transition-all ${isSelected
-                                        ? "bg-blue-100 dark:bg-blue-900 border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800"
+                                        ? "bg-accent/15 border-accent ring-2 ring-accent/30"
                                         : isConnected
-                                            ? "bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700"
-                                            : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700"
+                                            ? "bg-success/10 border-success/30"
+                                            : "bg-surface-2 border-line hover:border-accent/30"
                                     }`}
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{
@@ -491,10 +501,10 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
                                 whileHover={{ scale: isSelected ? 1.05 : 1.03 }}
                             >
                                 <p className={`font-medium ${isSelected
-                                        ? "text-blue-800 dark:text-blue-200"
+                                        ? "text-accent"
                                         : isConnected
-                                            ? "text-green-800 dark:text-green-300"
-                                            : "text-gray-800 dark:text-gray-200"
+                                            ? "text-success"
+                                            : "text-fg"
                                     }`}>
                                     <MathText inline>{el.label}</MathText>
                                 </p>
@@ -505,7 +515,7 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
                                                 initial={{ opacity: 0, height: 0 }}
                                                 animate={{ opacity: 1, height: "auto" }}
                                                 exit={{ opacity: 0, height: 0 }}
-                                                className="text-xs mt-1 text-gray-500 dark:text-gray-400"
+                                                className="text-xs mt-1 text-fg-subtle"
                                             >
                                                 <MathText inline>{el.description}</MathText>
                                             </motion.div>
@@ -516,7 +526,7 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
                                     <motion.p
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        className="text-xs text-blue-500 dark:text-blue-400 mt-1"
+                                        className="text-xs text-accent mt-1"
                                     >
                                         connects to: {el.connects_to.join(", ")}
                                     </motion.p>
@@ -540,7 +550,7 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
                                     key={`conn-${cid}`}
                                     initial={{ opacity: 0, x: -4 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
+                                    className="text-xs px-2 py-0.5 rounded-full bg-success/15 text-success"
                                 >
                                     {selectedNode} → {target?.label ?? cid}
                                 </motion.span>
@@ -553,7 +563,7 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
             {/* Annotations */}
             {annotations?.length > 0 && (
                 <motion.div
-                    className="mt-4 space-y-1 border-t border-gray-100 dark:border-gray-800 pt-3"
+                    className="mt-4 space-y-1 border-t border-line pt-3"
                     initial="initial"
                     animate="animate"
                     variants={stagger}
@@ -562,7 +572,7 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
                         <motion.div
                             key={`ann-${i}`}
                             variants={fadeUp}
-                            className="text-sm text-gray-600 dark:text-gray-400"
+                            className="text-sm text-fg-muted"
                         >
                             {"• "}<MathText inline>{a}</MathText>
                         </motion.div>
@@ -573,7 +583,7 @@ function ConceptDiagramView({ title, diagram_type, elements, annotations }: any)
             {selectedNode && (
                 <button
                     onClick={() => setSelectedNode(null)}
-                    className="mt-3 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="mt-3 text-xs text-fg-faint hover:text-fg-muted transition-colors"
                 >
                     Click a node or here to reset
                 </button>
@@ -601,16 +611,16 @@ function AnalogyCardView({ abstract_concept, real_world_analogy, how_they_match,
 
     return (
         <motion.div
-            className="rounded-lg border border-purple-200 dark:border-purple-800 overflow-hidden"
+            className="rounded-lg border border-violet/30 overflow-hidden"
             {...scaleIn}
         >
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 p-4">
-                <p className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-2">
+            <div className="bg-violet/10 p-4">
+                <p className="text-[11px] font-mono font-medium text-violet uppercase tracking-wider mb-2">
                     🔗 Analogy
                 </p>
                 <div className="flex items-center gap-3 flex-wrap">
                     <motion.span
-                        className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900 rounded-lg font-medium text-purple-800 dark:text-purple-300 text-sm"
+                        className="px-3 py-1.5 bg-violet/15 rounded-lg font-medium text-violet text-sm"
                         whileHover={{ scale: 1.03 }}
                     >
                         <MathText inline>{abstract_concept}</MathText>
@@ -618,12 +628,12 @@ function AnalogyCardView({ abstract_concept, real_world_analogy, how_they_match,
                     <motion.span
                         animate={{ x: [0, 4, 0] }}
                         transition={{ repeat: Infinity, duration: 2 }}
-                        className="text-purple-400"
+                        className="text-violet"
                     >
                         ↔
                     </motion.span>
                     <motion.span
-                        className="px-3 py-1.5 bg-pink-100 dark:bg-pink-900 rounded-lg font-medium text-pink-800 dark:text-pink-300 text-sm"
+                        className="px-3 py-1.5 bg-violet/15 rounded-lg font-medium text-violet text-sm"
                         whileHover={{ scale: 1.03 }}
                     >
                         <MathText inline>{real_world_analogy}</MathText>
@@ -635,13 +645,13 @@ function AnalogyCardView({ abstract_concept, real_world_analogy, how_they_match,
             {how_they_match?.length > 0 && (
                 <div className="p-4 space-y-2">
                     <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-fg-subtle">
                             Tap each pair to explore the connection
                         </p>
                         {!allRevealed && (
                             <button
                                 onClick={revealAll}
-                                className="text-xs text-purple-600 dark:text-purple-400 hover:underline"
+                                className="text-xs text-violet hover:underline"
                             >
                                 Reveal all
                             </button>
@@ -659,10 +669,10 @@ function AnalogyCardView({ abstract_concept, real_world_analogy, how_they_match,
                                 transition={{ delay: i * 0.08 }}
                             >
                                 <div className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${isRevealed
-                                        ? "border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30"
-                                        : "border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700"
+                                        ? "border-violet/30 bg-violet/10"
+                                        : "border-line hover:border-violet/30"
                                     }`}>
-                                    <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">
+                                    <span className="text-sm text-fg-muted flex-1">
                                         <MathText inline>{m.concept_aspect}</MathText>
                                     </span>
                                     <AnimatePresence mode="wait">
@@ -671,22 +681,22 @@ function AnalogyCardView({ abstract_concept, real_world_analogy, how_they_match,
                                                 key="arrow"
                                                 initial={{ opacity: 0, scale: 0 }}
                                                 animate={{ opacity: 1, scale: 1 }}
-                                                className="text-purple-400 text-xs"
+                                                className="text-violet text-xs"
                                             >
                                                 ↔
                                             </motion.span>
                                         ) : (
                                             <motion.span
                                                 key="q"
-                                                className="text-xs text-gray-400"
+                                                className="text-xs text-fg-faint"
                                             >
                                                 ?
                                             </motion.span>
                                         )}
                                     </AnimatePresence>
                                     <span className={`text-sm flex-1 text-right transition-all ${isRevealed
-                                            ? "text-purple-700 dark:text-purple-400"
-                                            : "text-transparent bg-purple-200 dark:bg-purple-800 rounded select-none"
+                                            ? "text-violet"
+                                            : "text-transparent bg-violet/20 rounded select-none"
                                         }`}>
                                         <MathText inline>{m.analogy_aspect}</MathText>
                                     </span>
@@ -699,7 +709,7 @@ function AnalogyCardView({ abstract_concept, real_world_analogy, how_they_match,
 
             {limitation && (
                 <div className="px-4 pb-4">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 italic p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
+                    <p className="text-xs text-fg-subtle italic p-2 bg-surface-2 rounded-md">
                         {"⚠ Limitation: "}<MathText inline>{limitation}</MathText>
                     </p>
                 </div>
@@ -716,18 +726,18 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
 
     return (
         <motion.div
-            className="rounded-lg border border-emerald-200 dark:border-emerald-800 overflow-hidden"
+            className="rounded-lg border border-success/30 overflow-hidden"
             {...scaleIn}
         >
-            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 px-4 py-3">
-                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+            <div className="bg-success/10 px-4 py-3">
+                <p className="text-[11px] font-mono font-medium text-success uppercase tracking-wider">
                     ✏️ Practice
                 </p>
             </div>
 
             {/* Problem */}
             <div className="p-4">
-                <div className="text-sm text-gray-900 dark:text-white font-medium mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="text-sm text-fg font-medium mb-4 p-3 bg-surface-2 rounded-lg">
                     <MathText>{problem}</MathText>
                 </div>
 
@@ -735,7 +745,7 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
                 {totalHints > 0 && (
                     <div className="mb-4 space-y-2">
                         <div className="flex items-center justify-between">
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-fg-subtle">
                                 Hints ({hintsRevealed}/{totalHints})
                             </p>
                             {/* Hint progress dots */}
@@ -744,8 +754,8 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
                                     <div
                                         key={`hint-dot-${i}`}
                                         className={`w-2 h-2 rounded-full transition-colors ${i < hintsRevealed
-                                                ? "bg-emerald-400 dark:bg-emerald-500"
-                                                : "bg-gray-200 dark:bg-gray-700"
+                                                ? "bg-success"
+                                                : "bg-surface-3"
                                             }`}
                                     />
                                 ))}
@@ -759,7 +769,7 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
                                     initial={{ opacity: 0, height: 0, x: -12 }}
                                     animate={{ opacity: 1, height: "auto", x: 0 }}
                                     transition={{ duration: 0.3 }}
-                                    className="text-sm text-emerald-700 dark:text-emerald-400 p-2 bg-emerald-50 dark:bg-emerald-950/50 rounded-md border-l-2 border-emerald-300 dark:border-emerald-700"
+                                    className="text-sm text-fg-muted p-2 bg-success/10 rounded-md border-l-2 border-success/40"
                                 >
                                     <span className="font-medium">Hint {i + 1}: </span>
                                     <MathText inline>{h}</MathText>
@@ -770,7 +780,7 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
                         {hintsRevealed < totalHints && (
                             <button
                                 onClick={() => setHintsRevealed((n) => n + 1)}
-                                className="text-sm px-3 py-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
+                                className="text-sm px-3 py-1.5 rounded-md bg-success/15 text-success hover:bg-success/20 transition-colors"
                             >
                                 {hintsRevealed === 0 ? "Need a hint?" : "Another hint?"}
                             </button>
@@ -783,8 +793,8 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
                     <button
                         onClick={() => setShowSolution(!showSolution)}
                         className={`w-full text-left text-sm px-3 py-2 rounded-md font-medium transition-all flex items-center justify-between ${showSolution
-                                ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
-                                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                                ? "bg-success/15 text-success"
+                                : "bg-surface-2 text-fg-muted hover:bg-success/10"
                             }`}
                     >
                         <span>{showSolution ? "Hide solution" : "Show full solution"}</span>
@@ -799,7 +809,7 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
                                 transition={{ duration: 0.3 }}
                                 className="overflow-hidden"
                             >
-                                <div className="p-3 bg-white dark:bg-gray-900 rounded border border-emerald-100 dark:border-emerald-900 text-sm text-gray-700 dark:text-gray-300">
+                                <div className="p-3 bg-surface rounded border border-success/30 text-sm text-fg-muted">
                                     <MathText>{worked_solution}</MathText>
                                 </div>
                             </motion.div>
@@ -818,7 +828,7 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
                         {!showInsight ? (
                             <button
                                 onClick={() => setShowInsight(true)}
-                                className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                                className="text-xs text-success hover:underline"
                             >
                                 💡 See key insight
                             </button>
@@ -826,7 +836,7 @@ function PracticeExerciseView({ problem, hints, worked_solution, key_insight }: 
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="text-sm font-medium text-emerald-800 dark:text-emerald-300 p-3 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800"
+                                className="text-sm font-medium text-success p-3 bg-success/10 rounded-lg border border-success/30"
                             >
                                 {"💡 "}<MathText inline>{key_insight}</MathText>
                             </motion.div>
@@ -844,14 +854,14 @@ function ProofWalkthroughView({ theorem, proof_steps, conclusion }: any) {
 
     return (
         <motion.div
-            className="rounded-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden"
+            className="rounded-lg border border-violet/30 overflow-hidden"
             {...scaleIn}
         >
-            <div className="bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-950 dark:to-violet-950 px-4 py-3">
-                <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide mb-1">
+            <div className="bg-violet/10 px-4 py-3">
+                <p className="text-[11px] font-mono font-medium text-violet uppercase tracking-wider mb-1">
                     📐 Proof
                 </p>
-                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                <div className="text-sm font-medium text-fg">
                     <MathText>{theorem}</MathText>
                 </div>
             </div>
@@ -860,15 +870,15 @@ function ProofWalkthroughView({ theorem, proof_steps, conclusion }: any) {
                 {/* Progress */}
                 {total > 0 && (
                     <div className="flex items-center gap-2 mb-3">
-                        <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <div className="flex-1 bg-surface-2 rounded-full h-1.5 overflow-hidden">
                             <motion.div
-                                className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full"
+                                className="h-full bg-violet rounded-full"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${(visibleSteps / total) * 100}%` }}
                                 transition={{ duration: 0.3 }}
                             />
                         </div>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                        <span className="text-xs text-fg-faint">
                             {visibleSteps}/{total}
                         </span>
                     </div>
@@ -881,17 +891,17 @@ function ProofWalkthroughView({ theorem, proof_steps, conclusion }: any) {
                             initial={{ opacity: 0, x: -12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx === visibleSteps - 1 ? 0.1 : 0 }}
-                            className="text-sm p-2 rounded-md bg-indigo-50/50 dark:bg-indigo-950/30"
+                            className="text-sm p-2 rounded-md bg-violet/10"
                         >
                             <div className="flex items-start gap-2">
-                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xs font-medium">
+                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet/15 text-violet flex items-center justify-center text-xs font-medium">
                                     {step.step}
                                 </span>
                                 <div className="flex-1">
-                                    <span className="text-gray-700 dark:text-gray-300">
+                                    <span className="text-fg-muted">
                                         <MathText inline>{step.statement}</MathText>
                                     </span>
-                                    <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5 italic">
+                                    <div className="text-xs text-violet mt-0.5 italic">
                                         <MathText inline>{step.justification}</MathText>
                                     </div>
                                 </div>
@@ -905,7 +915,7 @@ function ProofWalkthroughView({ theorem, proof_steps, conclusion }: any) {
                     {visibleSteps < total && (
                         <button
                             onClick={() => setVisibleSteps((n) => Math.min(n + 1, total))}
-                            className="text-sm px-3 py-1.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors"
+                            className="text-sm px-3 py-1.5 rounded-md bg-violet/15 text-violet hover:bg-violet/20 transition-colors"
                         >
                             Next step →
                         </button>
@@ -913,7 +923,7 @@ function ProofWalkthroughView({ theorem, proof_steps, conclusion }: any) {
                     {visibleSteps > 1 && (
                         <button
                             onClick={() => setVisibleSteps((n) => Math.max(1, n - 1))}
-                            className="text-sm px-3 py-1.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            className="text-sm px-3 py-1.5 rounded-md bg-surface-2 text-fg-muted hover:bg-surface-3 transition-colors"
                         >
                             ← Back
                         </button>
@@ -921,7 +931,7 @@ function ProofWalkthroughView({ theorem, proof_steps, conclusion }: any) {
                     {visibleSteps < total && (
                         <button
                             onClick={() => setVisibleSteps(total)}
-                            className="text-xs px-2 py-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                            className="text-xs px-2 py-1 text-fg-faint hover:text-fg-muted transition-colors"
                         >
                             Show all
                         </button>
@@ -934,7 +944,7 @@ function ProofWalkthroughView({ theorem, proof_steps, conclusion }: any) {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="mt-4 text-sm font-medium text-indigo-800 dark:text-indigo-300 p-3 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-indigo-200 dark:border-indigo-800"
+                        className="mt-4 text-sm font-medium text-violet p-3 bg-violet/10 rounded-lg border border-violet/30"
                     >
                         {"∴ "}<MathText inline>{conclusion}</MathText>
                     </motion.div>
@@ -958,32 +968,32 @@ function ExpertSummaryView({ key_ideas, common_pitfalls, advanced_connections, c
 
     return (
         <motion.div
-            className="rounded-lg border border-amber-200 dark:border-amber-800 overflow-hidden"
+            className="rounded-lg border border-warning/30 overflow-hidden"
             {...scaleIn}
         >
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950 px-4 py-3">
-                <p className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+            <div className="bg-warning/10 px-4 py-3">
+                <p className="text-[11px] font-mono font-medium text-warning uppercase tracking-wider">
                     🎓 Expert Summary
                 </p>
             </div>
 
             {/* Tab navigation */}
             {tabs.length > 1 && (
-                <div className="flex border-b border-amber-100 dark:border-amber-900">
+                <div className="flex border-b border-warning/30">
                     {tabs.map((tab) => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
                             className={`flex-1 px-3 py-2 text-xs font-medium transition-colors relative ${activeTab === tab.key
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
+                                    ? "text-warning"
+                                    : "text-fg-faint hover:text-fg-muted"
                                 }`}
                         >
                             {tab.icon} {tab.label}
                             {activeTab === tab.key && (
                                 <motion.div
                                     layoutId="expert-tab"
-                                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500 dark:bg-amber-400"
+                                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-warning"
                                 />
                             )}
                         </button>
@@ -1000,7 +1010,7 @@ function ExpertSummaryView({ key_ideas, common_pitfalls, advanced_connections, c
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -8 }}
                         transition={{ duration: 0.2 }}
-                        className="text-sm text-gray-700 dark:text-gray-300 space-y-2"
+                        className="text-sm text-fg-muted space-y-2"
                     >
                         {activeItems.map((item: string, i: number) => (
                             <motion.li
@@ -1008,9 +1018,9 @@ function ExpertSummaryView({ key_ideas, common_pitfalls, advanced_connections, c
                                 initial={{ opacity: 0, y: 6 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.05 }}
-                                className="flex gap-2 p-1.5 rounded-md hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-colors"
+                                className="flex gap-2 p-1.5 rounded-md hover:bg-warning/10 transition-colors"
                             >
-                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs">
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-warning/15 text-warning flex items-center justify-center text-xs">
                                     {i + 1}
                                 </span>
                                 <MathText inline>{item}</MathText>
@@ -1022,11 +1032,11 @@ function ExpertSummaryView({ key_ideas, common_pitfalls, advanced_connections, c
 
             {/* Challenge question */}
             {challenge_question && (
-                <div className="border-t border-amber-100 dark:border-amber-900 p-4">
+                <div className="border-t border-warning/30 p-4">
                     {!challengeRevealed ? (
                         <button
                             onClick={() => setChallengeRevealed(true)}
-                            className="w-full text-center text-sm px-3 py-2 rounded-md bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors font-medium"
+                            className="w-full text-center text-sm px-3 py-2 rounded-md bg-warning/15 text-warning hover:bg-warning/20 transition-colors font-medium"
                         >
                             🏆 Ready for a challenge?
                         </button>
@@ -1034,9 +1044,9 @@ function ExpertSummaryView({ key_ideas, common_pitfalls, advanced_connections, c
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="p-3 bg-white dark:bg-gray-900 rounded-lg border border-amber-200 dark:border-amber-800 text-sm"
+                            className="p-3 bg-surface rounded-lg border border-warning/30 text-sm"
                         >
-                            <p className="font-medium text-amber-800 dark:text-amber-300">
+                            <p className="font-medium text-warning">
                                 {"🏆 "}<MathText inline>{challenge_question}</MathText>
                             </p>
                         </motion.div>

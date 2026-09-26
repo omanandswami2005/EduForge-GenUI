@@ -2,14 +2,16 @@
 
 import { LEVEL_NAMES } from "@/lib/genui-schema";
 import type { GenUIMeta } from "@/hooks/useGenUI";
+import { scaffoldTone, toneStyles } from "@/lib/design";
 
-const LEVEL_COLORS = [
-    "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900",
-    "bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-900",
-    "bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900",
-    "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900",
-    "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900",
-];
+/** "groq:openai/gpt-oss-120b" → "Groq · gpt-oss-120b" */
+function formatModel(spec: string) {
+    const [provider, ...rest] = spec.split(":");
+    if (!rest.length) return spec;
+    const name = { groq: "Groq", openrouter: "OpenRouter" }[provider] ?? provider;
+    const model = rest.join(":").split("/").pop()?.replace(/:free$/, "") ?? rest.join(":");
+    return `${name} · ${model}`;
+}
 
 /**
  * Surfaces *why* the student is seeing this particular content, and how it
@@ -18,7 +20,7 @@ const LEVEL_COLORS = [
  * viewer instead of just showing polished output with no visible reasoning.
  */
 export function GenUIMetaBadge({ meta }: { meta: GenUIMeta }) {
-    if (meta.scaffoldLevel === null && meta.modelUsed === null) return null;
+    if (meta.scaffoldLevel === null && meta.modelUsed === null && !meta.servedFallback && !meta.servedFromCache) return null;
 
     const levelName = meta.scaffoldLevelName
         ? meta.scaffoldLevelName.charAt(0).toUpperCase() + meta.scaffoldLevelName.slice(1)
@@ -30,23 +32,30 @@ export function GenUIMetaBadge({ meta }: { meta: GenUIMeta }) {
         <div className="flex items-center gap-2 flex-wrap text-xs mb-3">
             {meta.scaffoldLevel !== null && (
                 <span
-                    className={`px-2 py-1 rounded-full border font-medium ${LEVEL_COLORS[meta.scaffoldLevel] ?? LEVEL_COLORS[2]}`}
+                    className={`px-2 py-1 rounded-full border font-mono font-medium ${toneStyles[scaffoldTone(meta.scaffoldLevel)].soft}`}
                     title="Scaffold level chosen by the BKT engine for this content — gates which component types the AI is allowed to generate"
                 >
                     Scaffold {meta.scaffoldLevel}/4 · {levelName}
                     {meta.pMastery !== null && ` (${Math.round(meta.pMastery * 100)}% mastery)`}
                 </span>
             )}
-            {meta.servedFromCache ? (
-                <span className="px-2 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
+            {meta.servedFallback ? (
+                <span
+                    className="px-2 py-1 rounded-full border border-line font-mono text-fg-subtle"
+                    title="Hand-authored content for this scaffold level, shown because live AI generation was unavailable"
+                >
+                    Curated content
+                </span>
+            ) : meta.servedFromCache ? (
+                <span className="px-2 py-1 rounded-full border border-line font-mono text-fg-subtle">
                     Served from cache
                 </span>
             ) : (
                 (meta.modelUsed || meta.durationMs !== null) && (
-                    <span className="px-2 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
+                    <span className="px-2 py-1 rounded-full border border-line font-mono text-fg-subtle">
                         {meta.durationMs !== null && `Generated in ${(meta.durationMs / 1000).toFixed(1)}s`}
                         {meta.durationMs !== null && meta.modelUsed && " · "}
-                        {meta.modelUsed && `via Groq (${meta.modelUsed})`}
+                        {meta.modelUsed && `via ${formatModel(meta.modelUsed)}`}
                     </span>
                 )
             )}

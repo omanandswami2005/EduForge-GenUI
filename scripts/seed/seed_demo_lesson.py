@@ -17,6 +17,10 @@ DEMO_LESSON = {
     "subject": "Physics",
     "teacherId": "demo_teacher_1",
     "status": "published",
+    # Fixed, memorable student join code for demos ("F = ma") — shown as FMA-234.
+    # Must use the join-code alphabet (apps/api/src/services/join_codes.py).
+    "joinCode": "FMA234",
+    "joinEnabled": True,
     "createdAt": datetime.now(),
     "publishedAt": datetime.now(),
     "ingestion": {
@@ -205,6 +209,9 @@ async def seed():
 
     # Create lesson
     await db.collection("lessons").document(DEMO_LESSON["id"]).set(DEMO_LESSON)
+    await db.collection("joinCodes").document(DEMO_LESSON["joinCode"]).set(
+        {"lessonId": DEMO_LESSON["id"], "createdAt": datetime.now()}
+    )
     print(f"  Created lesson: {DEMO_LESSON['title']}")
 
     # Create subtopics
@@ -246,11 +253,17 @@ async def seed():
             }
         )
 
+        concepts = db.collection("bkt_states").document(student["id"]).collection("concepts")
+        # Earlier versions of this script used composite doc IDs, which the BKT
+        # service never reads — clear them so re-running leaves a clean state.
+        async for stale in concepts.stream():
+            if stale.id not in student["bkt_states"]:
+                await stale.reference.delete()
+
         for concept_id, state in student["bkt_states"].items():
-            doc_id = f"{DEMO_LESSON['id']}_{state['subtopicId']}_{concept_id}".replace(" ", "_")
-            await db.collection("bkt_states").document(student["id"]).collection(
-                "concepts"
-            ).document(doc_id).set(
+            # Doc ID must be the bare concept ID — that's the key the BKT
+            # service's get/save_student_concept_state use.
+            await concepts.document(concept_id).set(
                 {
                     "studentId": student["id"],
                     "conceptId": concept_id,
@@ -273,6 +286,7 @@ async def seed():
 
     print("\n✅ Demo data seeded successfully")
     print(f"   Lesson: {DEMO_LESSON['title']}")
+    print(f"   Join code: {DEMO_LESSON['joinCode'][:3]}-{DEMO_LESSON['joinCode'][3:]}")
     print(f"   Subtopics: {len(DEMO_SUBTOPICS)}")
     print(f"   MCQs: {mcq_count}")
     print(f"   Students: {[s['name'] for s in DEMO_STUDENTS]}")

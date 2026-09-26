@@ -52,3 +52,5 @@ htmlcov/
 
 # Misc
 .secrets/
+# Local-dev PPTX uploads (API gateway LOCAL_UPLOAD_MODE)
+.local-uploads/

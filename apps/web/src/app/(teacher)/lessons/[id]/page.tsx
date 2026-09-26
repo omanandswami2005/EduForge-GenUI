@@ -8,6 +8,15 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { api } from "@/lib/api";
 import { ClassMasteryHeatmap } from "@/components/teacher/ClassMasteryHeatmap";
 import { MisconceptionInsights } from "@/components/teacher/MisconceptionInsights";
+import { JoinCodePanel } from "@/components/teacher/JoinCodePanel";
+import { Alert, Badge, Button, Card, Eyebrow, LoadingState, ProgressBar } from "@/components/ui";
+import { lessonStatusTone, type Tone } from "@/lib/design";
+
+const DIFFICULTY_TONES: Record<string, Tone> = {
+    foundational: "success",
+    intermediate: "warning",
+    advanced: "danger",
+};
 
 export default function LessonDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -15,7 +24,6 @@ export default function LessonDetailPage() {
     const [lesson, setLesson] = useState<any>(null);
     const [subtopics, setSubtopics] = useState<any[]>([]);
     const [publishing, setPublishing] = useState(false);
-    const [copied, setCopied] = useState(false);
 
     // Real-time listener for lesson (ingestion status updates)
     useEffect(() => {
@@ -33,7 +41,7 @@ export default function LessonDetailPage() {
         }
     }, [lesson?.status, lesson?.ingestion?.step, token, id]);
 
-    if (!lesson) return <div className="flex items-center justify-center min-h-dvh text-gray-500 dark:text-gray-400">Loading...</div>;
+    if (!lesson) return <LoadingState label="Loading lesson..." className="min-h-[60vh]" />;
 
     const handlePublish = async () => {
         if (!token) return;
@@ -47,82 +55,64 @@ export default function LessonDetailPage() {
         }
     };
 
-    const handleCopyId = () => {
-        navigator.clipboard.writeText(id);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
 
     return (
-        <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 mb-6">
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{lesson.title}</h2>
-                        <p className="text-gray-500 dark:text-gray-400">{lesson.subject}</p>
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+            <Card className="p-6 mb-6">
+                <div className="flex items-start justify-between flex-wrap gap-3">
+                    <div className="min-w-0">
+                        <Eyebrow tone="accent" className="mb-1">
+                            {lesson.subject || "Lesson"}
+                        </Eyebrow>
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-fg">{lesson.title}</h1>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${lesson.status === "published"
-                                ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300"
-                                : lesson.status === "processing"
-                                    ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300"
-                                    : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"
-                                }`}
-                        >
+                        <Badge tone={lessonStatusTone(lesson.status)} dot>
                             {lesson.status}
-                        </span>
+                        </Badge>
                         {lesson.ingestion?.step === "complete" && lesson.status !== "published" && (
-                            <button
-                                onClick={handlePublish}
-                                disabled={publishing}
-                                className="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
-                            >
+                            <Button size="sm" onClick={handlePublish} disabled={publishing}>
                                 {publishing ? "Publishing..." : "Publish"}
-                            </button>
+                            </Button>
                         )}
                     </div>
                 </div>
 
                 {/* Ingestion progress */}
                 {lesson.ingestion && lesson.status === "processing" && (
-                    <div className="mt-4">
-                        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-1">
+                    <div className="mt-5">
+                        <div className="flex items-center justify-between text-xs font-mono text-fg-subtle mb-1.5">
                             <span>{lesson.ingestion.message}</span>
                             <span>{lesson.ingestion.progress}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                            <div
-                                className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
-                                style={{ width: `${lesson.ingestion.progress}%` }}
-                            />
-                        </div>
+                        <ProgressBar value={lesson.ingestion.progress} />
                     </div>
+                )}
+
+                {lesson.ingestion?.step === "failed" && (
+                    <Alert className="mt-5" title="Ingestion failed">
+                        {lesson.ingestion.message}
+                    </Alert>
                 )}
 
                 {lesson.ingestion?.step === "complete" && (
-                    <div className="mt-4 flex gap-4 text-sm text-gray-600 dark:text-gray-400">
-                        <span>{lesson.ingestion.subtopicsFound} subtopics</span>
-                        <span>{lesson.ingestion.mcqsGenerated} MCQs</span>
+                    <div className="mt-5 flex gap-6">
+                        <div>
+                            <div className="eyebrow">Subtopics</div>
+                            <div className="text-xl font-bold font-mono text-fg">{lesson.ingestion.subtopicsFound}</div>
+                        </div>
+                        <div>
+                            <div className="eyebrow">MCQs</div>
+                            <div className="text-xl font-bold font-mono text-fg">{lesson.ingestion.mcqsGenerated}</div>
+                        </div>
                     </div>
                 )}
 
-                {/* Share lesson ID for student enrollment */}
-                {lesson.status === "published" && (
-                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Share with students</p>
-                            <p className="text-xs text-blue-600 dark:text-blue-400 font-mono">{id}</p>
-                        </div>
-                        <button
-                            onClick={handleCopyId}
-                            className="px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700"
-                        >
-                            {copied ? "Copied!" : "Copy ID"}
-                        </button>
-                    </div>
+                {/* Student join code */}
+                {lesson.status === "published" && token && (
+                    <JoinCodePanel token={token} lessonId={id} lessonTitle={lesson.title} />
                 )}
-            </div>
+            </Card>
 
             {/* Class mastery heatmap + misconception insights */}
             {lesson.status === "published" && token && (
@@ -135,44 +125,37 @@ export default function LessonDetailPage() {
             {/* Subtopics list */}
             {subtopics.length > 0 && (
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Topics</h3>
+                    <Eyebrow className="mb-3">Topics</Eyebrow>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                         {subtopics.map((st: any, idx: number) => (
-                            <div
-                                key={st.id || idx}
-                                className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="font-medium text-gray-900 dark:text-white">
-                                            {idx + 1}. {st.title}
+                            <Card key={st.id || idx} className="p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <h4 className="font-medium text-fg">
+                                            <span className="font-mono text-fg-faint mr-1.5">{String(idx + 1).padStart(2, "0")}</span>
+                                            {st.title}
                                         </h4>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{st.description}</p>
+                                        <p className="text-sm text-fg-subtle mt-1">{st.description}</p>
                                     </div>
-                                    <span
-                                        className={`px-2 py-0.5 rounded text-xs font-medium ${st.difficulty === "foundational"
-                                            ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
-                                            : st.difficulty === "intermediate"
-                                                ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300"
-                                                : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"
-                                            }`}
-                                    >
-                                        {st.difficulty}
-                                    </span>
+                                    {st.difficulty && (
+                                        <Badge tone={DIFFICULTY_TONES[st.difficulty] ?? "neutral"} className="shrink-0">
+                                            {st.difficulty}
+                                        </Badge>
+                                    )}
                                 </div>
                                 {st.keyConcepts && (
-                                    <div className="mt-2 flex flex-wrap gap-1">
+                                    <div className="mt-3 flex flex-wrap gap-1.5">
                                         {st.keyConcepts.map((c: string) => (
                                             <span
                                                 key={c}
-                                                className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded text-xs"
+                                                className="px-2 py-0.5 bg-surface-2 border border-line text-fg-muted rounded text-xs font-mono"
                                             >
                                                 {c}
                                             </span>
                                         ))}
                                     </div>
                                 )}
-                            </div>
+                            </Card>
                         ))}
                     </div>
                 </div>

@@ -42,7 +42,7 @@ export function MathText({ children, className, inline = false }: MathTextProps)
                     strong: ({ children: c }) => <strong className="font-semibold">{c}</strong>,
                     em: ({ children: c }) => <em className="italic">{c}</em>,
                     code: ({ children: c }) => (
-                        <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono">
+                        <code className="px-1 py-0.5 bg-surface-2 rounded text-xs font-mono">
                             {c}
                         </code>
                     ),

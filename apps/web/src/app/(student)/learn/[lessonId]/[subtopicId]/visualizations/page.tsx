@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { EmptyState, LoadingState, buttonVariants } from "@/components/ui";
 import { useSessionStore } from "@/stores/sessionStore";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -24,7 +26,6 @@ export default function SavedVisualizationsPage() {
     const { user, loading } = useSessionStore();
     const [visualization, setVisualization] = useState<SavedVisualization | null>(null);
     const [fetchLoading, setFetchLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (loading || !user?.uid || !subtopicId) return;
@@ -40,7 +41,7 @@ export default function SavedVisualizationsPage() {
                 }
             })
             .catch((err) => {
-                setError(err.message ?? "Failed to load saved visualization");
+                console.warn("Saved visualization unavailable:", err.message ?? "Failed to load saved visualization"); // falls through to the empty state
             })
             .finally(() => setFetchLoading(false));
     }, [loading, user?.uid, subtopicId]);
@@ -50,55 +51,50 @@ export default function SavedVisualizationsPage() {
         : null;
 
     return (
-        <main className="max-w-4xl mx-auto px-6 py-8">
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
             <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
                 <div>
                     <Link
                         href={`/learn/${lessonId}/${subtopicId}`}
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        className="inline-flex items-center gap-1.5 text-xs font-mono text-fg-subtle hover:text-accent transition-colors"
                     >
-                        ← Back to learning
+                        <ArrowLeft className="size-3.5" />
+                        Back to learning
                     </Link>
-                    <h1 className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
+                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-fg">
                         My Saved Visualization
                     </h1>
                     {formattedDate && (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        <p className="text-xs font-mono text-fg-faint mt-1">
                             Generated on {formattedDate}
                         </p>
                     )}
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+            <div className="bg-surface rounded-xl border border-line p-6">
                 {fetchLoading ? (
-                    <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 py-8 justify-center">
-                        <span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        Loading saved visualization...
-                    </div>
-                ) : error ? (
-                    <p className="text-sm text-red-500 dark:text-red-400 py-4">{error}</p>
+                    <LoadingState label="Loading saved visualization..." />
                 ) : visualization && visualization.components.length > 0 ? (
                     <>
-                        <div className="mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Concept: <span className="font-medium">{visualization.conceptId}</span>
+                        <div className="mb-4 pb-3 border-b border-line">
+                            <p className="eyebrow">
+                                Concept: <span className="text-fg-muted normal-case">{visualization.conceptId}</span>
                             </p>
                         </div>
                         <GenUIRenderer components={visualization.components} />
                     </>
                 ) : (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500 dark:text-gray-400 mb-3">
-                            No saved visualization for this subtopic yet.
-                        </p>
-                        <Link
-                            href={`/learn/${lessonId}/${subtopicId}`}
-                            className="inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg font-medium hover:bg-blue-700"
-                        >
-                            Go learn &amp; generate one →
-                        </Link>
-                    </div>
+                    <EmptyState
+                        className="border-none"
+                        title="No saved visualization yet"
+                        description="Visualizations are saved automatically once generated for this subtopic."
+                        action={
+                            <Link href={`/learn/${lessonId}/${subtopicId}`} className={buttonVariants()}>
+                                Go learn &amp; generate one →
+                            </Link>
+                        }
+                    />
                 )}
             </div>
         </main>

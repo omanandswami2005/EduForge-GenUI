@@ -101,7 +101,9 @@ account), then enroll the student using lesson ID `demo_newtons_laws`.
 | `GROQ_API_KEY` | **Required.** Free key from console.groq.com/keys — the only external dependency |
 | `GROQ_GENUI_MODEL` | Model for student-facing content generation (default `openai/gpt-oss-120b`) |
 | `GROQ_INGESTION_MODEL` | Model for the PPTX ingestion pipeline (topics/MCQs/BKT params) |
-| `GROQ_GENUI_FALLBACK_MODELS` | Comma-separated fallback chain if the primary model errors mid-demo |
+| `OPENROUTER_API_KEY` | Optional second LLM provider (free tier, slow) used after Groq in the GenUI chain |
+| `GENUI_MODELS` | GenUI model chain as `provider:model`, tried in order (default: Groq gpt-oss-120b → Groq gpt-oss-20b → OpenRouter Dots3 free). If all fail, curated content is shown |
+| `GENUI_STRATEGY` | `fallback` (default) or `race` (all models in parallel, first valid wins) |
 | `NEXT_PUBLIC_USE_FIREBASE_EMULATOR` | Keep `true` for local dev — points the client SDK at the emulators |
 | `GOOGLE_CLOUD_PROJECT` | Fake project ID used by the emulators (default `demo-eduforge`) — doesn't need to be a real GCP project |
 
@@ -113,10 +115,10 @@ account), then enroll the student using lesson ID `demo_newtons_laws`.
   own directory, not the repo root. `start-everything.sh` symlinks it
   automatically; if running the frontend manually for the first time, run
   once: `cd apps/web && ln -sf ../../.env.local .env.local`
-- **A GenUI card sits on "Generating..." forever, or shows a red error** —
-  known Groq free-tier flakiness (rate limits, occasional structured-output
-  validation failures at the more complex "mastered" scaffold level). It's
-  surfaced as a visible error, not a silent hang — just retry the action.
+- **A GenUI card shows a "Curated content" badge** — every model in the
+  `GENUI_MODELS` chain failed (rate limits, timeouts), so hand-written content
+  for that scaffold level was shown instead. `[llm]` lines in
+  `/tmp/eduforge-web.log` say why each model failed.
 - **`pnpm install` fails on native build scripts** — run
   `pnpm approve-builds` once, or check `allowBuilds` in
   `pnpm-workspace.yaml` is set to `true` for `sharp`, `protobufjs`,
